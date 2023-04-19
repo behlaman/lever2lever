@@ -1,0 +1,24 @@
+{
+  "mode": "dev",
+  "tempDir": "./temp",
+  "sessionKey": "68903670310258709E3E9B0CAD415B05A72160944A74CF20A295194D84BD0866",
+  "defaultDbEncryptionKey": "f32c345f21f9e1577452063f8924e6a3fe3e9751f201304213b2f845d8841d61",
+  "db": {
+    "host": "127.0.0.1",
+    "port": "5432",
+    "user": "postgres",
+    "entities": "./server/domain/**/*.ts",
+    "password": "asdf",
+    "db": "dev-lever-2-lever",
+    "dropSchema": false,
+    "migrationsTableName": "migrations",
+    "synchronize": true
+  },
+  "lever": {
+    "baseUrl": "https://api.sandbox.lever.co/v1",
+    "prodUrl": "https://api.lever.co/v1",
+    "sourceKey": "yI7L4eOwyZ4TPZwSmYwoHdcC5rvGieRGPSjF49brrgFT2ilS",
+    "targetKey": "",
+    "dashboardBaseUrl": "https://hire.sandbox.lever.co"
+  }
+}
