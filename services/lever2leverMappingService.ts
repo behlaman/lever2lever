@@ -1,8 +1,4 @@
-import {Archived, LeverCandidate} from "../server/domain/entities/lever/LeverCandidate";
-import * as fs from "fs";
-import csv = require("csvtojson/index");
-import {id} from "inversify";
-
+import {LeverCandidate} from "../server/domain/entities/lever/LeverCandidate";
 
 export class Lever2leverMappingService {
 
