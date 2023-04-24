@@ -1,0 +1,25 @@
+SourceId,TargetId
+Hired,Hired
+Offer Declined - Accept another offer,They rejected us: Staying in current position/accepted counter offer from current employer
+Offer Declined - Compensation Expectations,They rejected us: Compensation
+OFFER DECLINED - OTHERS,They rejected us: Personal
+Offer declined - Stay in current company,They rejected us: Staying in current position/accepted counter offer from current employer
+Offer declined - Timing,They rejected us: Timing
+Offer declined - Won't relocate,They rejected us: Location
+REJECT - NO RESPONSE,We rejected them: Candidate not considered - Was not reviewed
+REJECT - NO SUITABLE POSITION,We rejected them: Position Cancelled
+REJECT - OTHERS,Data Migration
+REJECT - OVERQUALIFIED,We rejected them: Level alignment
+Reject - position closed,We rejected them: Position Cancelled
+REJECT - SOFT SKILLS,We rejected them: Did not demonstrate core values (Soft Skills)
+REJECT - TECHNICAL SKILLS,We rejected them: Functional Skill (Hard skills)
+REJECT - TOO JUNIOR,We rejected them: Level alignment
+Suggested another position,We rejected them: On process on another req
+Timing,They rejected us: Timing
+Withdrew - Accept another offer,They rejected us: Competing offer
+WITHDREW - COMPENSATION EXPECTATIONS,They rejected us: Compensation
+Withdrew - others,They rejected us: Personal
+Withdrew - Stay in current company,They rejected us: Staying in current position/accepted counter offer from current employer
+Withdrew - Technical difficulties,They rejected us: Role Alignment
+Withdrew - Timing,They rejected us: Timing
+WITHDREW - WON'T RELOCATE,They rejected us: Location
