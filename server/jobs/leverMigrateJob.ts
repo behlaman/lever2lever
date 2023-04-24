@@ -14,9 +14,10 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService(config.get("lever.targetKey"), false);
-        let take: number = 1;
+        let take: number = 3;
         let skipCount = 0
         let leverData;
+
 
         try {
             do {
@@ -25,7 +26,6 @@ export class LeverMigrateJob {
                         isSynced: false,
                         hasError: false
                     },
-                    skip: skipCount,
                     take: take,
                     order: {
                         id: "ASC"
@@ -124,7 +124,7 @@ export class LeverMigrateJob {
                     const feedBackForms = oppData?.feedbackForms;
                     for (const feedBackForm of feedBackForms) {
                         oppFeedbackForms = feedBackForm?.fields.map(i => {
-                            let body = `Profile Form\n`
+                            let body = `Feedback Form\n`
                             body += `Text - ${i?.text}\n`
                             body += `Value - ${i?.value}\n`
                             body += `Description - ${i?.description}\n`
@@ -160,9 +160,7 @@ export class LeverMigrateJob {
 
                 await Promise.all(leverOppPromise);
 
-                skipCount += 1
-
-            } while (leverData.length === 1)
+            } while (leverData.length > 0)
         } catch (e) {
             console.error(e, e.message)
         }
