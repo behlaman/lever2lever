@@ -14,17 +14,15 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService(config.get("lever.targetKey"), false);
-        let take: number = 3;
-        let skipCount = 0
-        let leverData;
+        let take: number = 1
+        let leverData: any[];
 
 
         try {
             do {
                 leverData = await LeverDataRepository.find({
                     where: {
-                        isSynced: false,
-                        hasError: false
+                        oppLeverId: '0217d3e0-7dec-44dc-85c8-9502c6fd243e'
                     },
                     take: take,
                     order: {
@@ -39,53 +37,38 @@ export class LeverMigrateJob {
                     let postingIds: any[] = []
 
                     for (const application of opportunity?.applications) {
-                        postingIds = data?.postings[application?.posting] ?? []
+                        postingIds = [data?.postings[application?.posting]] ?? []
                     }
-
 
                     let owner = opportunity?.owner?.email;
-                    let ownerId;
-                    let userRes = await leverApiService.getUsers();
-                    if (userRes?.status === 200 && userRes?.data) {
-                        userRes?.data.map(user => {
-                            if (user?.email === owner) {
-                                ownerId = user?.id;
-                            }
-                        })
+                    let userId = await this.getMapping(owner)
+
+
+                    let stage = data?.stages[opportunity?.stage?.text];
+                    let stageId = await this.getMapping(null, null, stage);
+
+                    let archiveId;
+                    if (opportunity?.archived) {
+                        let archiveReason = data?.archiveReasons[opportunity?.archived?.reason]
+                        archiveId = await this.getMapping(null, archiveReason, null);
                     }
 
-                    let stage;
-                    let res = await leverApiService.getStages();
-                    if (res?.status === 200 && res?.data) {
-                        res?.data.map(x => {
-                            if (x.text === data?.stages[opportunity?.stage?.text]) {
-                                return stage = x.id;
-                            }
-                        })
-                    } else {
-                        console.error(`Unable to fetch stages ${res?.data}`)
-                    }
+                    let performAs = userId ? userId : "6ce93850-a74a-4008-bcf7-486bfe44f63f"
 
-                    let archiveReason;
-                    let archiveRes = await leverApiService.getArchiveReasons();
-                    if (archiveRes?.status === 200 && archiveRes?.data) {
-                        archiveRes?.data.map(x => {
-                            if (x.text === data?.archiveReasons[opportunity?.archived?.reason]) {
-                                archiveReason = opportunity?.archived === null ? null : data?.archiveReasons[opportunity?.archived?.reason]
-                            }
-                        })
-                    } else {
-                        console.error(`Unable to fetch archiveReasons ${archiveRes?.data}`)
-                    }
+                    // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
-                    let performAs = ownerId ? ownerId : "6ce93850-a74a-4008-bcf7-486bfe44f63f"
-
-                    let mappingData = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stage, archiveReason, performAs);
+                    let mappingData = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stageId, archiveId, performAs);
 
                     await this.downloadOppFiles(leverData, dir, oppData.oppLeverId);
 
-                    let resumeUrl = oppData?.resumeUrl ?? "";
+                    let resumeUrl = oppData?.resumeUrl ?? [];
                     let otherFileUrl = oppData?.otherFileUrls ?? [];
+
+                    if (!fs.existsSync(resumeUrl))
+                        resumeUrl = []
+
+                    if (!fs.existsSync(otherFileUrl))
+                        otherFileUrl = []
 
                     let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0], otherFileUrl)
 
@@ -99,8 +82,8 @@ export class LeverMigrateJob {
                         oppData.isSynced = true;
                         oppData.failureLog = response?.data?.message;
 
-                        console.log(`opp payload: ${mappingData} for id : ${opportunity.id}`)
-                        console.log(`Error while creating target opp for id: ${opportunity.id}
+                        console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
+                        console.log(`Error while creating target opp for id: ${opportunity.id}\n
                      ERROR: ${JSON.stringify(response.data)}`)
                     }
 
@@ -111,12 +94,11 @@ export class LeverMigrateJob {
 
                     for (const profileForm of profileForms) {
                         oppProfileForms = profileForm?.fields.map(i => {
-                            let body = `Profile Form\n`
-                            body += `Text - ${i?.text}\n`
-                            body += `Value - ${i?.value}\n`
-                            body += `Description - ${i?.description}\n`
+                            let body = `Text -> ${i?.text}\n`
+                            body += `Value -> ${i?.value}\n`
+                            body += `Description -> ${i?.description}\n`
 
-                            return body
+                            return body.includes("\n") ? body?.replace(/[\r\n]+/gm, "") : body
                         })
                     }
 
@@ -124,12 +106,11 @@ export class LeverMigrateJob {
                     const feedBackForms = oppData?.feedbackForms;
                     for (const feedBackForm of feedBackForms) {
                         oppFeedbackForms = feedBackForm?.fields.map(i => {
-                            let body = `Feedback Form\n`
-                            body += `Text - ${i?.text}\n`
-                            body += `Value - ${i?.value}\n`
-                            body += `Description - ${i?.description}\n`
+                            let body = `Text -> ${i?.text}\n `
+                            body += `Value -> ${i?.value}\n `
+                            body += `Description -> ${i?.description}\n `
 
-                            return body
+                            return body.includes("\n") ? body?.replace(/[\r\n]+/gm, "") : body
                         });
                     }
 
@@ -146,15 +127,18 @@ export class LeverMigrateJob {
 
                     createOppNotes?.push(...oppFeedbackForms)
 
-                    for (const note of createOppNotes) {
-                        let response = await leverApiService.addNote(oppData.oppLeverId, note, true)
-                        if (response?.status === 201 && response.data !== null) {
-                            oppData.noteId = response?.data?.noteId;
-                            console.log(`created notes successfully for opp id: ${oppData.oppLeverId}`)
-                        } else {
-                            console.error(`Failed to create notes for ${oppData.oppLeverId} Error: ${response.data} | ${response.error}`)
+                    if (response?.data?.id) {
+                        for (const note of createOppNotes) {
+                            let response = await leverApiService.addNote(oppData.oppLeverId, note, true)
+                            if (response?.status === 201 && response.data !== null) {
+                                oppData.noteId = response?.data?.noteId;
+                                console.log(`created notes successfully for opp id: ${oppData.oppLeverId}`)
+                            } else {
+                                console.error(`Failed to create notes for ${oppData.oppLeverId} Error: ${JSON.stringify(response.data)}`)
+                            }
                         }
                     }
+
                     await LeverDataRepository.save(oppData)
                 });
 
@@ -268,7 +252,7 @@ export class LeverMigrateJob {
                 });
             });
         } else {
-            console.log(response.data);
+            console.log(response.data?.statusMessage, response?.data?.statusCode);
         }
     }
 
@@ -288,7 +272,7 @@ export class LeverMigrateJob {
                 });
             });
         } else {
-            console.log(offerResponse.data);
+            console.log(offerResponse.data?.statusMessage, offerResponse?.data?.statusCode);
         }
     }
 
@@ -308,7 +292,7 @@ export class LeverMigrateJob {
                 });
             });
         } else {
-            console.log(fileRes.data);
+            console.log(fileRes.data?.statusMessage, fileRes?.data?.statusCode);
         }
     }
 
@@ -343,6 +327,30 @@ export class LeverMigrateJob {
             postings: data[0],
             archiveReasons: data[1],
             stages: data[2]
+        }
+    }
+
+
+    async getMapping(user?: string, ar?: string, stage?: string): Promise<any> {
+        const leverApi = new LeverApiService("", true)
+
+        let resData = user ? await leverApi.getUser(user) : ar ? await leverApi.getArchiveReasons() : stage ? await leverApi.getStages() : undefined
+
+        if (!resData)
+            return
+
+        let responseValue;
+        if (resData?.status === 200 && resData?.data) {
+            resData?.data.map(data => {
+                if (data?.email === user) {
+                    responseValue = data?.id
+                } else if (data?.text === ar || data?.text === stage) {
+                    responseValue = data?.id
+                }
+            })
+            return responseValue
+        } else {
+            console.error(`Unable to fetch data ${JSON.stringify(resData?.data?.message)}`)
         }
     }
 }

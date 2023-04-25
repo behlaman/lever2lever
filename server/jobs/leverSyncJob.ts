@@ -21,7 +21,7 @@ export class LeverSyncJob {
 
         try {
             do {
-                allOppData = await leverApiService.listAllOpp(limit, offset, new Date("2023-03-15"));
+                allOppData = await leverApiService.listAllOpp(limit, offset);
 
                 if (allOppData?.status !== 200 && allOppData?.data.data?.length === 0) return;
 

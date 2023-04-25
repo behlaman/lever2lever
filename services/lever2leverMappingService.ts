@@ -39,7 +39,7 @@ export class Lever2leverMappingService {
 
         targetOpp.archived = {
             reason: oppArchived,
-            archivedAt: opportunity?.archived?.archivedAt ?? new Date().valueOf()
+            archivedAt: opportunity?.archived?.archivedAt ?? null
         };
 
         targetOpp.postings = postingIds;

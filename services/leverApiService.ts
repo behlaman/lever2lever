@@ -32,8 +32,9 @@ export class LeverApiService {
     async listAllOpp(limit?: Number, offset?: string, createdAtStart?: Date): Promise<any> {
         let requestParams: any = {
             limit: limit,
-            created_at_start: createdAtStart.valueOf()
         };
+
+        if (createdAtStart) requestParams['created_at_start'] = createdAtStart.valueOf();
 
         if (offset)
             requestParams.offset = offset;
@@ -160,13 +161,13 @@ export class LeverApiService {
         };
     }
 
-    async getUsers(email?: string, includeDeactivated?: boolean): Promise<any> {
-        let params = {
+    async getUser(email: string): Promise<any> {
+        let requestParams: any = {
             email: email,
-            includeDeactivated: includeDeactivated
-        }
-        let res = await this.axios.get(`/users`, {params}).catch(e => e.response);
-        await this.parseResponse(res);
+        };
+
+        let res = await this.axios.get(`/users`, {params: requestParams}).catch(e => e.response);
+        return this.parseResponse(res)
     }
 
     async addNote(leverId: string, note: string, isSecret: boolean) {
@@ -174,8 +175,9 @@ export class LeverApiService {
         return this.getResponse(`/opportunities/${leverId}/notes`, data).catch((e) => e.response)
     }
 
-    async getResponse(url: string, body: any, recursionFactor: number = 0): Promise<ApiResponse> {
-        const response: AxiosResponse = await this.axios
+
+    async getResponse<T>(url: string, body: any, recursionFactor: number = 0): Promise<ApiResponse> {
+        const response: any = await this.axios
             .post(url, body, {
                 headers: {
                     "Content-Type": "application/json"
@@ -184,8 +186,7 @@ export class LeverApiService {
                 maxBodyLength: Infinity,
             })
             .catch((e) => {
-                console.error(e);
-                return e.response;
+                console.error(e.message);
             });
 
         if (response?.status === 429 && recursionFactor < 20) {

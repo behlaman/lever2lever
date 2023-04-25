@@ -15,7 +15,7 @@ export class LeverSyncJobSpec extends BaseTest {
 
     @test("Fetch Opp From Lever")
     async testSyncJob() {
-        await LeverDataRepository.delete({});
+        // await LeverDataRepository.delete({});
 
         const leverApi = new LeverApiService(config.get("lever.sourceKey"), true);
         let syncJob = new LeverSyncJob();
@@ -48,7 +48,7 @@ export class LeverSyncJobSpec extends BaseTest {
         const leverApi = new LeverApiService(config.get("lever.sourceKey"), true);
         const job = new LeverMigrateJob();
 
-        // await job.downloadOppFiles()
+        // await job.getUserMapping(100, "")
     }
 
     @test("readCsv")
