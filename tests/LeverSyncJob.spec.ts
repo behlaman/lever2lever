@@ -17,15 +17,16 @@ export class LeverSyncJobSpec extends BaseTest {
     async testSyncJob() {
         // await LeverDataRepository.delete({});
 
-        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, false);
         let syncJob = new LeverSyncJob();
-        await syncJob.syncLeverOpp();
+        // await syncJob.syncLeverOpp();
 
+        await syncJob.getPostings();
     }
 
     @test("get data From Lever")
     async testApi() {
-        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, true);
         let res = await leverApi.downloadResumes("2c9477f0-78ca-49b8-b7d5-d893bd9f8a6b", "a4a28512-6656-43cd-a5b5-704eaf307bae");
         console.log(res);
     }
@@ -45,7 +46,7 @@ export class LeverSyncJobSpec extends BaseTest {
     @test("download data From Lever")
     async testDownloadFile() {
 
-        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, true);
         const job = new LeverMigrateJob();
 
         // await job.getUserMapping(100, "")
@@ -53,8 +54,12 @@ export class LeverSyncJobSpec extends BaseTest {
 
     @test("readCsv")
     async readCsv() {
+        const leverApi = new LeverApiService("", true, false);
 
-        const readCsv = new LeverMigrateJob().parseCsv();
+        let res = await leverApi.getPostings();
+        let rec = res.data.map(x => x.id);
+
+        console.log(rec)
     }
 
 

@@ -15,12 +15,12 @@ export class LeverApiService {
     private axios: AxiosInstance;
     private leverApiKey: string;
 
-    constructor(leverApiKey: string, leverSync: boolean) {
+    constructor(leverApiKey: string, leverSync: boolean, isSandbox: boolean) {
         this.leverApiKey = leverApiKey;
         let headers = {};
 
         this.axios = Axios.create({
-            baseURL: config.get("lever.baseUrl"),
+            baseURL: isSandbox ? config.get("lever.baseUrl") : config.get("lever.prodUrl"),
             auth: {
                 username: leverSync === true ? config.get("lever.sourceKey") : config.get("lever.targetKey"),
                 password: ""
@@ -43,6 +43,17 @@ export class LeverApiService {
 
         return await this.axios.get(`/opportunities?${allParams.join("&")}`, {params: requestParams})
             .catch(e => e.response);
+    }
+
+    async getPostings(limit?: Number, offset?: string,): Promise<any> {
+        let requestParams: any = {
+            limit: limit,
+        };
+
+        if (offset)
+            requestParams.offset = offset;
+
+        return await this.axios.get(`/postings`, {params: requestParams}).catch(e => e.response)
     }
 
     async getProfileForm(oppId: string): Promise<{ status: number, data: any }> {
@@ -139,7 +150,7 @@ export class LeverApiService {
                     formData.append(`${x}`, data[x]);
                 }
             } catch (e) {
-                console.error(e, `Error creating form data ${x} for candidate ${JSON.stringify(data)}`);
+                console.log(e, `Error creating form data ${x} for candidate ${JSON.stringify(data)}`);
             }
         });
 
@@ -186,7 +197,7 @@ export class LeverApiService {
                 maxBodyLength: Infinity,
             })
             .catch((e) => {
-                console.error(e.message);
+                console.log(e.response?.data?.message);
             });
 
         if (response?.status === 429 && recursionFactor < 20) {
@@ -226,7 +237,7 @@ export class LeverApiService {
         }
         return {
             status: response ? response.status : -1,
-            data: data
+            data: data,
         };
     }
 

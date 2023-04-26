@@ -17,7 +17,7 @@
   "lever": {
     "baseUrl": "https://api.sandbox.lever.co/v1",
     "prodUrl": "https://api.lever.co/v1",
-    "sourceKey": "L8PAm3lws521rv7gipagVrHJrBgn0N4uFTz5tY4zeZOm+qO2",
+    "sourceKey": "+2hQs7ATujm1jFWNtkfbpW8EvTPzqr91UoSr0W/dsIqaDOy8",
     "targetKey": "mG9P7eg2WQYmMK9olLPna+9ZNNSHRBJ8Bpbk2PG/8uOXF8VU",
     "dashboardBaseUrl": "https://hire.sandbox.lever.co"
   }

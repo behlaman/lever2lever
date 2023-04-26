@@ -17,7 +17,7 @@ export class LeverSyncJob {
         let page: number = 1;
         let offset: string = "";
 
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApiService = new LeverApiService("", true, false);
 
         try {
             do {
@@ -27,8 +27,8 @@ export class LeverSyncJob {
 
                 offset = allOppData.data?.next ?? "";
 
-                let leverIds = allOppData.data?.data.map((x) => x.id.toString());
-                let filteredOpp = allOppData.data?.data.filter((x) => x.id !== null);
+                let leverIds = allOppData.data?.data?.map((x) => x.id.toString());
+                let filteredOpp = allOppData.data?.data?.filter((x) => x.id !== null);
 
                 const existingOpp = await LeverDataRepository.find({
                     where: {
@@ -85,7 +85,7 @@ export class LeverSyncJob {
             notes: [], forms: [], feedback: [], resumes: [], offers: [], files: []
         };
 
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true, true);
 
         let oppData = await Promise.all(
             [leverApiService.getNotes(oppId), leverApiService.getFiles(oppId),
@@ -102,5 +102,39 @@ export class LeverSyncJob {
         return obj;
     }
 
+
+    async getPostings(): Promise<any> {
+        let limit: Number = 100;
+        let page: number = 1;
+        let offset: string = "";
+        let count = 0
+
+        let allPostings
+        let postingRec = []
+
+        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), false, true);
+
+        do {
+            allPostings = await leverApiService.getPostings(limit, offset);
+
+            if (allPostings?.status !== 200 && allPostings?.data.data?.length === 0) return;
+
+            offset = allPostings.data?.next ?? "";
+
+            postingRec.push(...allPostings?.data?.data.map(x => x.id));
+
+            count += postingRec.length;
+
+            console.log(postingRec);
+
+            console.log(`exported ${count} postings`);
+
+            postingRec = [];
+
+            page++
+        } while (allPostings?.data?.hasNext === true)
+
+        return {postings: postingRec};
+    }
 
 }

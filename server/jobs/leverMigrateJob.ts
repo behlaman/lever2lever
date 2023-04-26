@@ -13,7 +13,7 @@ export class LeverMigrateJob {
 
         let data = await this.parseCsv()
 
-        const leverApiService = new LeverApiService(config.get("lever.targetKey"), false);
+        const leverApiService = new LeverApiService("", false, true);
         let take: number = 1
         let leverData: any[];
 
@@ -22,7 +22,8 @@ export class LeverMigrateJob {
             do {
                 leverData = await LeverDataRepository.find({
                     where: {
-                        oppLeverId: '0217d3e0-7dec-44dc-85c8-9502c6fd243e'
+                        isSynced: false,
+                        hasError: false
                     },
                     take: take,
                     order: {
@@ -49,11 +50,10 @@ export class LeverMigrateJob {
 
                     let archiveId;
                     if (opportunity?.archived) {
-                        let archiveReason = data?.archiveReasons[opportunity?.archived?.reason]
-                        archiveId = await this.getMapping(null, archiveReason, null);
+                        archiveId = data?.archiveReasons[opportunity?.archived?.reason]
                     }
 
-                    let performAs = userId ? userId : "6ce93850-a74a-4008-bcf7-486bfe44f63f"
+                    let performAs = "6ce93850-a74a-4008-bcf7-486bfe44f63f"
 
                     // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
@@ -61,14 +61,16 @@ export class LeverMigrateJob {
 
                     await this.downloadOppFiles(leverData, dir, oppData.oppLeverId);
 
-                    let resumeUrl = oppData?.resumeUrl ?? [];
+                    let resumeUrl = oppData?.resumeUrl ?? "";
                     let otherFileUrl = oppData?.otherFileUrls ?? [];
 
-                    if (!fs.existsSync(resumeUrl))
+                    if ((fs.existsSync(resumeUrl))) {
                         resumeUrl = []
+                    }
 
-                    if (!fs.existsSync(otherFileUrl))
+                    if ((fs.existsSync(otherFileUrl))) {
                         otherFileUrl = []
+                    }
 
                     let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0], otherFileUrl)
 
@@ -80,11 +82,11 @@ export class LeverMigrateJob {
                     } else {
                         oppData.hasError = true;
                         oppData.isSynced = true;
-                        oppData.failureLog = response?.data?.message;
+                        oppData.failureLog = response?.data;
 
-                        console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
-                        console.log(`Error while creating target opp for id: ${opportunity.id}\n
-                     ERROR: ${JSON.stringify(response.data)}`)
+                        // console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
+
+                        console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
                     }
 
                     await LeverDataRepository.save(oppData);
@@ -127,16 +129,18 @@ export class LeverMigrateJob {
 
                     createOppNotes?.push(...oppFeedbackForms)
 
+                    let noteIDs: any = []
                     if (response?.data?.id) {
                         for (const note of createOppNotes) {
-                            let response = await leverApiService.addNote(oppData.oppLeverId, note, true)
+                            let response = await leverApiService.addNote(oppData?.targetOppLeverId, note, true)
                             if (response?.status === 201 && response.data !== null) {
-                                oppData.noteId = response?.data?.noteId;
+                                noteIDs.push(response?.data?.noteId)
                                 console.log(`created notes successfully for opp id: ${oppData.oppLeverId}`)
                             } else {
                                 console.error(`Failed to create notes for ${oppData.oppLeverId} Error: ${JSON.stringify(response.data)}`)
                             }
                         }
+                        oppData.noteId = noteIDs;
                     }
 
                     await LeverDataRepository.save(oppData)
@@ -203,7 +207,11 @@ export class LeverMigrateJob {
                     }
                 }
 
-                await Promise.all(downloadFiles)
+                const status = await Promise.allSettled(downloadFiles)
+
+                status.forEach(x => {
+                    return x.status === "fulfilled"
+                })
             });
 
             await Promise.all(filesDownloadPromise)
@@ -237,7 +245,7 @@ export class LeverMigrateJob {
     }
 
     async downloadResumes(oppId: string, resumeId: string, dir: string): Promise<any> {
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApiService = new LeverApiService("", true, false);
 
         let response = await leverApiService.downloadResumes(oppId, resumeId);
 
@@ -257,7 +265,7 @@ export class LeverMigrateJob {
     }
 
     async downloadOffers(oppId: string, offerId: string, dir: string): Promise<any> {
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApiService = new LeverApiService("", true, false);
 
         let offerResponse = await leverApiService.downloadOfferFile(oppId, offerId);
 
@@ -277,7 +285,7 @@ export class LeverMigrateJob {
     }
 
     async downloadFiles(oppId: string, otherFilesId: string, dir: string): Promise<any> {
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true);
+        const leverApiService = new LeverApiService("", true, false);
 
         let fileRes = await leverApiService.downloadFiles(oppId, otherFilesId);
 
@@ -297,7 +305,7 @@ export class LeverMigrateJob {
     }
 
     async parseCsv(): Promise<any> {
-        let csvPath: string[] = [`./mapping/Lever_Postings.csv`, `./mapping/Lever_archiveReasons.csv`, `./mapping/Lever_Stages.csv`];
+        let csvPath: string[] = [`./mapping/Test_Postings.csv`, `./mapping/Test_AR.csv`, `./mapping/Lever_Stages.csv`];
 
         let data = await Promise.all(csvPath.map(async csv1 => {
             let readCsv = fs.readFileSync(csv1);
@@ -314,6 +322,12 @@ export class LeverMigrateJob {
 
 
             let testObj: any = {};
+
+            if (csv1.endsWith("Test_AR.csv")) {
+                for (const x of csvData) {
+                    testObj[x['SourceArchiveId']] = x['TargetArchiveId']
+                }
+            }
 
             for (const x of csvData) {
                 testObj[x['SourceId']] = x['TargetId']
@@ -332,7 +346,7 @@ export class LeverMigrateJob {
 
 
     async getMapping(user?: string, ar?: string, stage?: string): Promise<any> {
-        const leverApi = new LeverApiService("", true)
+        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, false)
 
         let resData = user ? await leverApi.getUser(user) : ar ? await leverApi.getArchiveReasons() : stage ? await leverApi.getStages() : undefined
 
@@ -344,7 +358,7 @@ export class LeverMigrateJob {
             resData?.data.map(data => {
                 if (data?.email === user) {
                     responseValue = data?.id
-                } else if (data?.text === ar || data?.text === stage) {
+                } else if (data?.id === ar || data?.text === stage) {
                     responseValue = data?.id
                 }
             })
