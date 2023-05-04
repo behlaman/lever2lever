@@ -5,6 +5,7 @@ import {Lever2leverMappingService} from "../../services/lever2leverMappingServic
 import * as fs from "fs";
 import {LeverData} from "../domain/entities/lever2lever/LeverData";
 import csv = require("csvtojson/index");
+import {LeverCandidate} from "../domain/entities/lever/LeverCandidate";
 
 export class LeverMigrateJob {
     async migrateOpportunities(): Promise<any> {
@@ -14,7 +15,7 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService("", false, true);
-        let take: number = 1
+        let take: number = 3
         let leverData: any[];
 
 
@@ -46,7 +47,7 @@ export class LeverMigrateJob {
 
 
                     let stage = data?.stages[opportunity?.stage?.text];
-                    let stageId = await this.getMapping(null, null, stage);
+                    let stageId = await this.getMapping(null, stage);
 
                     let archiveId;
                     if (opportunity?.archived) {
@@ -57,7 +58,7 @@ export class LeverMigrateJob {
 
                     // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
-                    let mappingData = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stageId, archiveId, performAs);
+                    let mappingData: LeverCandidate = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stageId, archiveId, performAs);
 
                     await this.downloadOppFiles(leverData, dir, oppData.oppLeverId);
 
@@ -96,11 +97,10 @@ export class LeverMigrateJob {
 
                     for (const profileForm of profileForms) {
                         oppProfileForms = profileForm?.fields.map(i => {
-                            let body = `Text -> ${i?.text}\n`
-                            body += `Value -> ${i?.value}\n`
-                            body += `Description -> ${i?.description}\n`
+                            let body = `Text -> ${i?.text}\n`;
+                            body += `Value -> ${i?.value}\n`;
 
-                            return body.includes("\n") ? body?.replace(/[\r\n]+/gm, "") : body
+                            return body
                         })
                     }
 
@@ -108,11 +108,12 @@ export class LeverMigrateJob {
                     const feedBackForms = oppData?.feedbackForms;
                     for (const feedBackForm of feedBackForms) {
                         oppFeedbackForms = feedBackForm?.fields.map(i => {
-                            let body = `Text -> ${i?.text}\n `
-                            body += `Value -> ${i?.value}\n `
-                            body += `Description -> ${i?.description}\n `
 
-                            return body.includes("\n") ? body?.replace(/[\r\n]+/gm, "") : body
+                            let body = `Feedback\n`;
+                            body += `Text  ->  ${i?.text}\n`;
+                            body += `Value ->  ${i?.value}\n`;
+
+                            return body
                         });
                     }
 
@@ -305,7 +306,7 @@ export class LeverMigrateJob {
     }
 
     async parseCsv(): Promise<any> {
-        let csvPath: string[] = [`./mapping/Test_Postings.csv`, `./mapping/Test_AR.csv`, `./mapping/Lever_Stages.csv`];
+        let csvPath: string[] = [`./mapping/postings.csv`, `./mapping/Test_AR.csv`, `./mapping/Lever_Stages.csv`];
 
         let data = await Promise.all(csvPath.map(async csv1 => {
             let readCsv = fs.readFileSync(csv1);
@@ -345,21 +346,18 @@ export class LeverMigrateJob {
     }
 
 
-    async getMapping(user?: string, ar?: string, stage?: string): Promise<any> {
+    async getMapping(user?: string, stage?: string): Promise<any> {
         const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, false)
 
-        let resData = user ? await leverApi.getUser(user) : ar ? await leverApi.getArchiveReasons() : stage ? await leverApi.getStages() : undefined
-
-        if (!resData)
-            return
+        let resData = user ? await leverApi.getUser(user) : await leverApi.getStages()
 
         let responseValue;
         if (resData?.status === 200 && resData?.data) {
             resData?.data.map(data => {
                 if (data?.email === user) {
-                    responseValue = data?.id
-                } else if (data?.id === ar || data?.text === stage) {
-                    responseValue = data?.id
+                    responseValue = data.id
+                } else if (data?.text === stage) {
+                    responseValue = data.id
                 }
             })
             return responseValue

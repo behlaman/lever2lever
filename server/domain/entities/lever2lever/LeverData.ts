@@ -21,7 +21,7 @@ export class LeverData extends BaseEntity {
     @Column("jsonb", {nullable: true})
     oppOwner: any;
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     recordData: LeverCandidate[];
 
     @Column("jsonb", {nullable: true})

@@ -23,12 +23,13 @@ export class LeverSyncJob {
             do {
                 allOppData = await leverApiService.listAllOpp(limit, offset);
 
-                if (allOppData?.status !== 200 && allOppData?.data.data?.length === 0) return;
+                if (allOppData?.status !== 200 && allOppData?.data?.data?.length === 0) return;
 
-                offset = allOppData.data?.next ?? "";
+                offset = allOppData?.data?.next ?? "";
 
-                let leverIds = allOppData.data?.data?.map((x) => x.id.toString());
-                let filteredOpp = allOppData.data?.data?.filter((x) => x.id !== null);
+
+                let leverIds = allOppData?.data?.data?.map((x) => x.id);
+                let filteredOpp = allOppData?.data?.data?.filter((x) => x.id !== null);
 
                 const existingOpp = await LeverDataRepository.find({
                     where: {
@@ -46,7 +47,7 @@ export class LeverSyncJob {
                     let oppData = await this.getOppData(leverOpp.id.toString());
 
                     let leverOppData = new LeverData();
-                    leverOppData.oppLeverId = leverOpp.id.toString();
+                    leverOppData.oppLeverId = leverOpp.id;
                     leverOppData.recordData = leverOpp;
                     leverOppData.oppOwner = leverOpp.owner;
                     leverOppData.offers = oppData.offers;
@@ -85,7 +86,7 @@ export class LeverSyncJob {
             notes: [], forms: [], feedback: [], resumes: [], offers: [], files: []
         };
 
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true, true);
+        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), true, false);
 
         let oppData = await Promise.all(
             [leverApiService.getNotes(oppId), leverApiService.getFiles(oppId),

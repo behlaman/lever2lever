@@ -15,6 +15,8 @@ export class Lever2leverMappingService {
 
         targetOpp.location = opportunity.location;
 
+        targetOpp.phones = opportunity.phones;
+
         targetOpp.links = opportunity.links;
 
         targetOpp.headline = opportunity.headline;
@@ -27,13 +29,9 @@ export class Lever2leverMappingService {
 
         targetOpp.owner = ownerId;
 
-        let tags = [];
+        targetOpp.tags = opportunity.tags;
 
-        for (let i = 0; i < opportunity.tags.length; i++) {
-            tags.push(opportunity.tags[i], `Referral by ${opportunity.owner?.email}`)
-        }
-
-        targetOpp.tags = tags
+        targetOpp.tags.push(`Referral by ${opportunity.owner?.email}`)
 
         targetOpp.stage = stage;
 

@@ -19,9 +19,9 @@ export class LeverSyncJobSpec extends BaseTest {
 
         const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, false);
         let syncJob = new LeverSyncJob();
-        // await syncJob.syncLeverOpp();
+        await syncJob.syncLeverOpp();
 
-        await syncJob.getPostings();
+        // await syncJob.getPostings();
     }
 
     @test("get data From Lever")
@@ -70,6 +70,19 @@ export class LeverSyncJobSpec extends BaseTest {
         await job.migrateOpportunities();
     }
 
+    @test("get postings count")
+    async getPostingsCount() {
 
+        let dataRec = await LeverDataRepository.find({});
+
+        const opps: any = dataRec.flatMap(x => x.recordData);
+
+        let postings = [];
+
+        let dara = opps.filter(opp => opp.applications.length === 0)
+
+        console.log(dara);
+        console.log(postings);
+    }
 }
 

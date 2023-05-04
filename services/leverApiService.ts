@@ -15,14 +15,14 @@ export class LeverApiService {
     private axios: AxiosInstance;
     private leverApiKey: string;
 
-    constructor(leverApiKey: string, leverSync: boolean, isSandbox: boolean) {
+    constructor(leverApiKey: string, sourceApiKey: boolean, isSandbox: boolean) {
         this.leverApiKey = leverApiKey;
         let headers = {};
 
         this.axios = Axios.create({
             baseURL: isSandbox ? config.get("lever.baseUrl") : config.get("lever.prodUrl"),
             auth: {
-                username: leverSync === true ? config.get("lever.sourceKey") : config.get("lever.targetKey"),
+                username: sourceApiKey === true ? config.get("lever.sourceKey") : config.get("lever.targetKey"),
                 password: ""
             },
             headers: headers
