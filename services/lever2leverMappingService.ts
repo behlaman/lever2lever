@@ -15,6 +15,12 @@ export class Lever2leverMappingService {
 
         targetOpp.location = opportunity.location;
 
+        for (let i = 0; i < opportunity?.phones?.length; i++) {
+            if (opportunity?.phones[i]?.value.includes("\u0000")) {
+                opportunity?.phones[i]?.value.replace("\u0000", "")
+            }
+        }
+
         targetOpp.phones = opportunity.phones;
 
         targetOpp.links = opportunity.links;

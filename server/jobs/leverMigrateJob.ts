@@ -15,7 +15,7 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService("", false, true);
-        let take: number = 3
+        let take: number = 1
         let leverData: any[];
 
 
@@ -34,7 +34,7 @@ export class LeverMigrateJob {
 
                 const leverOppPromise: any[] = leverData.flatMap(async oppData => {
 
-                    const opportunity: any = oppData.recordData;
+                    const opportunity: any = oppData?.recordData;
 
                     let postingIds: any[] = []
 
@@ -54,7 +54,7 @@ export class LeverMigrateJob {
                         archiveId = data?.archiveReasons[opportunity?.archived?.reason]
                     }
 
-                    let performAs = "6ce93850-a74a-4008-bcf7-486bfe44f63f"
+                    let performAs = userId ? userId : "307d977b-d9e5-442e-830b-307e38ce78e9"
 
                     // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
@@ -85,7 +85,7 @@ export class LeverMigrateJob {
                         oppData.isSynced = true;
                         oppData.failureLog = response?.data;
 
-                        // console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
+                        console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
 
                         console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
                     }
@@ -306,7 +306,7 @@ export class LeverMigrateJob {
     }
 
     async parseCsv(): Promise<any> {
-        let csvPath: string[] = [`./mapping/postings.csv`, `./mapping/Test_AR.csv`, `./mapping/Lever_Stages.csv`];
+        let csvPath: string[] = [`./mapping/postings.csv`, `./mapping/archive_reasons.csv`, `./mapping/stages.csv`];
 
         let data = await Promise.all(csvPath.map(async csv1 => {
             let readCsv = fs.readFileSync(csv1);
@@ -324,7 +324,7 @@ export class LeverMigrateJob {
 
             let testObj: any = {};
 
-            if (csv1.endsWith("Test_AR.csv")) {
+            if (csv1.endsWith("archive_reasons.csv")) {
                 for (const x of csvData) {
                     testObj[x['SourceArchiveId']] = x['TargetArchiveId']
                 }

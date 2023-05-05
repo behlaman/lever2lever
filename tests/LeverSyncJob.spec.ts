@@ -70,6 +70,27 @@ export class LeverSyncJobSpec extends BaseTest {
         await job.migrateOpportunities();
     }
 
+
+    @test("get archive reasons")
+    async getAR() {
+        const leverApi = new LeverApiService("", false, true);
+
+        let data: { id: string, text: string } = {
+            id: "",
+            text: ""
+        }
+        let arData = await leverApi.getArchiveReasons();
+        if (arData?.status === 200 && arData?.data?.length > 0) {
+            arData?.data?.map(x => {
+                data[x['id']] = x['text']
+            })
+            console.log(data)
+            return data;
+        }
+
+    }
+
+
     @test("get postings count")
     async getPostingsCount() {
 
@@ -83,6 +104,12 @@ export class LeverSyncJobSpec extends BaseTest {
 
         console.log(dara);
         console.log(postings);
+    }
+
+    @test("get parsed csv data")
+    async parseCSV() {
+        const job = new LeverMigrateJob()
+        await job.parseCsv()
     }
 }
 

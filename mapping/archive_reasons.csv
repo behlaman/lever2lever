@@ -1,0 +1,25 @@
+SourceId,SourceArchiveId,TargetId,TargetArchiveId
+Hired,099b38b8-7f78-48ac-b856-0184a86acdd2,Hired,b785e5ed-6e6e-4ca4-887f-dc15b70dbe44
+Offer Declined - Accept another offer,f5eb9dee-21e5-484e-936a-ab2d766f164d,They rejected us: Staying in current position/accepted counter offer from current employer,b90e7f92-7067-43f1-8e6e-bf4e5800bd0a
+Offer Declined - Compensation Expectations,54553531-1136-47dd-a9ed-abcbf0375006,They rejected us: Compensation,1593c810-598e-4761-815d-121d915c6a94
+OFFER DECLINED - OTHERS,75b70f74-29a1-41ed-a19c-7aa7f98d44ea,They rejected us: Personal,48321264-fefc-4d3e-8f6e-54450182ac10
+Offer declined - Stay in current company,c0c59581-2d62-4aa9-ae87-06bdb9e43064,They rejected us: Staying in current position/accepted counter offer from current employer,b90e7f92-7067-43f1-8e6e-bf4e5800bd0a
+Offer declined - Timing,d3d9f4eb-5094-4b5b-8f36-8540f626f0a6,They rejected us: Timing,7e6d035a-ae8a-4797-b4e4-13ca9e5b16bc
+Offer declined - Won't relocate,79318167-a4f9-4f74-9c94-5200d19112f9,They rejected us: Location,25afc04e-5df9-450d-bec2-ac295e795329
+REJECT - NO RESPONSE,c2af9698-d03e-4342-b389-fd28625f5e60,We rejected them: Candidate not considered - Was not reviewed,6d1a929f-6717-406b-ba61-629273e80523
+REJECT - NO SUITABLE POSITION,e0dcc709-e19c-45de-9ab7-86a90fbed001,We rejected them: Position Cancelled,984babe6-5ec7-4d62-b89d-83e9ff823ea9
+REJECT - OTHERS,2831bf73-6610-4ee1-970b-b8cc3e11785c,Data Migration,ce324441-5afc-4cc2-a973-c9b4ee82de84
+REJECT - OVERQUALIFIED,2a7d215b-c6fd-459a-be24-1020674e8535,We rejected them: Level alignment,02295f2a-e93d-439a-9433-14ae995fdf01
+Reject - position closed,36e7a33d-3378-4dd2-99bc-8190f36bfa9b,We rejected them: Position Cancelled,984babe6-5ec7-4d62-b89d-83e9ff823ea9
+REJECT - SOFT SKILLS,384128df-10ab-4b85-93cb-17dd295a29aa,We rejected them: Did not demonstrate core values (Soft Skills),d3066714-b115-4891-963e-da318d1d12d5
+REJECT - TECHNICAL SKILLS,d032e414-782d-4ed8-a165-f19bcdcc1f20,We rejected them: Functional Skill (Hard skills),858de261-6ffd-4123-821c-f605be278991
+REJECT - TOO JUNIOR,0c08b772-edaa-4a05-9676-61ecf810382f,We rejected them: Level alignment,02295f2a-e93d-439a-9433-14ae995fdf01
+Suggested another position,e130deb0-3e8f-4a98-98fd-2573e4ca6d30,We rejected them: On process on another req,e246e9f4-c893-4576-907f-bded6dd8698d
+Timing,783cb268-603c-487b-845f-077520b67cb7,They rejected us: Timing,7e6d035a-ae8a-4797-b4e4-13ca9e5b16bc
+Withdrew - Accept another offer,b43e8f4c-9776-4ee9-be10-437418298227,They rejected us: Competing offer,264bbd68-d495-4572-97e1-da26edc31a94
+WITHDREW - COMPENSATION EXPECTATIONS,35cd64b4-97ce-4707-af96-cba4ce6f1e38,They rejected us: Compensation,1593c810-598e-4761-815d-121d915c6a94
+Withdrew - others,074307f6-a877-43cb-b813-267a6908a4a0,They rejected us: Personal,48321264-fefc-4d3e-8f6e-54450182ac10
+Withdrew - Stay in current company,235708c2-f55d-4e0f-b51a-a03b2e412dcf,They rejected us: Staying in current position/accepted counter offer from current employer,b90e7f92-7067-43f1-8e6e-bf4e5800bd0a
+Withdrew - Technical difficulties,fa8ec3da-ae31-4a91-acaa-7268f2d9fd14,They rejected us: Role Alignment,983390ad-1673-4c9d-a453-8ecad791a816
+Withdrew - Timing,09d53fc1-d17b-4f8f-8965-dec4301585be,They rejected us: Timing,7e6d035a-ae8a-4797-b4e4-13ca9e5b16bc
+WITHDREW - WON'T RELOCATE,a1f4330e-8201-4958-b63d-73c40fa9363b,They rejected us: Location,25afc04e-5df9-450d-bec2-ac295e795329
