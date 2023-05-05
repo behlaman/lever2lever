@@ -15,7 +15,7 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService("", false, true);
-        let take: number = 1
+        let take: number = 3
         let leverData: any[];
 
 
@@ -39,10 +39,14 @@ export class LeverMigrateJob {
                     let postingIds: any[] = []
 
                     for (const application of opportunity?.applications) {
+                        if (data?.postings[application?.posting] === "")
+                            data.postings[application?.posting] = []
+
                         postingIds = [data?.postings[application?.posting]] ?? []
                     }
 
                     let owner = opportunity?.owner?.email;
+
                     let userId = await this.getMapping(owner)
 
 
@@ -79,11 +83,11 @@ export class LeverMigrateJob {
                         oppData.targetOppLeverId = response.data?.id;
                         oppData.isSynced = true;
                         oppData.migrateDate = new Date();
-                        console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id}`)
+                        console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id} | opp owner - ${performAs}`)
                     } else {
                         oppData.hasError = true;
                         oppData.isSynced = true;
-                        oppData.failureLog = response?.data;
+                        oppData.failureLog = `Error: ${response?.data} | Opp Payload - ${JSON.stringify(mappingData)}`;
 
                         console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
 
@@ -347,7 +351,10 @@ export class LeverMigrateJob {
 
 
     async getMapping(user?: string, stage?: string): Promise<any> {
-        const leverApi = new LeverApiService(config.get("lever.sourceKey"), true, false)
+        const leverApi = new LeverApiService(config.get("lever.targetKey"), false, true)
+
+        if (!user && !stage)
+            return
 
         let resData = user ? await leverApi.getUser(user) : await leverApi.getStages()
 

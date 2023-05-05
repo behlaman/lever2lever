@@ -46,7 +46,7 @@ export class Lever2leverMappingService {
             archivedAt: opportunity?.archived?.archivedAt ?? null
         };
 
-        targetOpp.postings = postingIds;
+        targetOpp.postings = postingIds ?? [];
 
         return targetOpp;
     }
