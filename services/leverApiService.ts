@@ -125,7 +125,7 @@ export class LeverApiService {
         data: any,
         resumeFile: string,
         files: string[]
-    ): Promise<{ status: number; data: any }> {
+    ): Promise<{ data: any; error: any; status: number }> {
         let formData = new FormData();
 
         Object.keys(data).forEach((x) => {
@@ -168,7 +168,8 @@ export class LeverApiService {
 
         return {
             status: response.status ? response.status : -1,
-            data: response.data
+            data: response.data,
+            error: response.error
         };
     }
 
@@ -186,6 +187,40 @@ export class LeverApiService {
         return this.getResponse(`/opportunities/${leverId}/notes`, data).catch((e) => e.response)
     }
 
+    // async handle429Requests(url: string, recursionFactor: number = 0): Promise<ApiResponse> {
+    //     const response: any = await this.axios
+    //         .get(url, {
+    //             headers: {
+    //                 "Content-Type": "application/json"
+    //             },
+    //             maxContentLength: Infinity,
+    //             maxBodyLength: Infinity,
+    //         })
+    //         .catch((e) => {
+    //             console.log(e.response?.data?.message);
+    //         });
+    //
+    //     if (response?.status === 429 && recursionFactor < 20) {
+    //         const requestAllowed = response?.headers["X-RateLimit-Remaining"] ?? 11;
+    //
+    //         if (requestAllowed <= 6 && requestAllowed >= 4) {
+    //             await this.sleep(10000);
+    //         } else if (requestAllowed <= 4 && requestAllowed >= 2) {
+    //             await this.sleep(20000);
+    //         } else {
+    //             await this.sleep(30000);
+    //         }
+    //
+    //         return this.getResponse(url, ++recursionFactor);
+    //
+    //     } else if (response?.status === 429 && recursionFactor > 20) {
+    //         console.error(
+    //             new Error(`Max Retry attempts for Lever API already done for URL[${url}]`)
+    //         );
+    //     }
+    //
+    //     return this.parseResponse(response);
+    // }
 
     async getResponse<T>(url: string, body: any, recursionFactor: number = 0): Promise<ApiResponse> {
         const response: any = await this.axios

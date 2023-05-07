@@ -49,7 +49,6 @@ export class LeverMigrateJob {
 
                     let userId = await this.getMapping(owner)
 
-
                     let stage = data?.stages[opportunity?.stage?.text];
                     let stageId = await this.getMapping(null, stage);
 
@@ -87,7 +86,7 @@ export class LeverMigrateJob {
                     } else {
                         oppData.hasError = true;
                         oppData.isSynced = true;
-                        oppData.failureLog = `Error: ${response?.data} | Opp Payload - ${JSON.stringify(mappingData)}`;
+                        oppData.failureLog = `Error: ${response?.error} | Opp Payload - ${JSON.stringify(mappingData)}`;
 
                         console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
 
@@ -164,53 +163,46 @@ export class LeverMigrateJob {
             let resumeFileUrls: any[] = []
             let otherFileUrls: any[] = []
             let resumeFiles
-            let otherFiles
             let offers
             let downloadFiles = [];
 
             const filesDownloadPromise = processBatch.map(async (opp: LeverData): Promise<any> => {
 
-                let resumeIds = opp.resumes.map(x => x.id);
-                let resumeFileName = opp.resumes?.map(x => x?.file?.name);
+                let resumes = opp?.resumes?.filter(x => x?.id && x?.file?.name);
 
-                if (resumeFileName) {
-                    if (resumeIds.length > 0) {
-                        for (const resumeId of resumeIds) {
-                            resumeFiles = `${dir}/resumes/${resumeFileName}`
-                            downloadFiles.push(this.downloadResumes(opp.oppLeverId, resumeId, resumeFiles));
-                            opp.resumeUrl = [resumeFiles]
-                            resumeFileUrls.push(opp)
-                        }
+                if (resumes)
+                    for (const resume of resumes) {
+                        resume?.file?.name.length > 15 ? resume?.file?.name.substr(8) : resume?.file?.name
+
+                        resumeFiles = `${dir}/resumes/${resume?.file?.name}`
+                        downloadFiles.push(this.downloadResumes(opp.oppLeverId, resume?.id, resumeFiles));
+                        opp.resumeUrl = [resumeFiles]
+                        resumeFileUrls.push(opp)
                     }
-                }
 
-                let offerIds = opp?.offers.map(x => x.id);
-                let offerFile = opp.offers?.map(x => x.signedDocument);
 
-                if (offerFile) {
-                    if (offerIds.length > 0) {
-                        for (const offerId of offerIds) {
-                            offers = `${dir}/offers/${offerFile}`;
-                            downloadFiles.push(this.downloadOffers(opp.oppLeverId, offerId, offers));
-                            opp.otherFileUrls = [offers]
-                            otherFileUrls.push(opp)
-                        }
+                let otherFiles = opp?.otherFiles?.filter(x => x?.id && x?.name)
+
+                if (otherFiles)
+                    for (const otherFile of otherFiles) {
+                        otherFile?.name.length > 15 ? otherFile?.name.substr(15) : otherFile?.name
+
+                        otherFiles = `${dir}/otherFiles/${otherFile?.name}`;
+                        downloadFiles.push(this.downloadFiles(opp.oppLeverId, otherFile?.id, otherFiles));
+                        opp.otherFileUrls = [otherFiles]
+                        otherFileUrls.push(opp)
                     }
-                }
 
-                let otherOppFileIds = opp?.otherFiles?.map(x => x.id);
-                let otherFileName = opp.otherFiles?.map(x => x.name);
 
-                if (otherFileName) {
-                    if (otherOppFileIds.length > 0) {
-                        for (const otherOppFileId of otherOppFileIds) {
-                            otherFiles = `${dir}/otherFiles/${otherFileName}`;
-                            downloadFiles.push(this.downloadFiles(opp.oppLeverId, otherOppFileId, otherFiles));
-                            opp.otherFileUrls = [otherFiles]
-                            otherFileUrls.push(opp)
-                        }
+                let offerData = opp?.offers?.filter(x => x?.id && x?.signedDocument);
+
+                if (offerData)
+                    for (const offer of offerData) {
+                        offers = `${dir}/offers/${offer?.signedDocument}`;
+                        downloadFiles.push(this.downloadOffers(opp.oppLeverId, offer?.id, offers));
+                        opp.otherFileUrls = [offers]
+                        otherFileUrls.push(opp)
                     }
-                }
 
                 const status = await Promise.allSettled(downloadFiles)
 
