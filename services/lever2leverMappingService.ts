@@ -16,9 +16,7 @@ export class Lever2leverMappingService {
         targetOpp.location = opportunity.location;
 
         for (let i = 0; i < opportunity?.phones?.length; i++) {
-            if (opportunity?.phones[i]?.value.includes("\u0000")) {
-                opportunity?.phones[i]?.value.replace("\u0000", "")
-            }
+            opportunity?.phones[i]?.value.includes("\u001b") ? opportunity?.phones[i]?.value.replace(/[^a-zA-Z0-9.]+/g, "") : opportunity?.phones[i]?.value
         }
 
         targetOpp.phones = opportunity.phones;
@@ -34,7 +32,7 @@ export class Lever2leverMappingService {
 
         targetOpp.sources = opportunity.sources;
 
-        targetOpp.owner = "46e113e8-69fe-4685-a166-0fa15e3f6028";
+        targetOpp.owner = ownerId;
 
         targetOpp.tags = opportunity.tags;
 

@@ -119,5 +119,18 @@ export class LeverSyncJobSpec extends BaseTest {
         let a = string.includes("\u001b") ? string.replace(/\u001b/g, "") : string
         console.log(a)
     }
+
+
+    @test("update_db")
+    async updateDataRecords() {
+
+        await LeverDataRepository.update({isSynced: true}, {
+            isSynced: false,
+            targetOppLeverId: null,
+            hasError: false,
+            migrateDate: null,
+            failureLog: null
+        })
+    }
 }
 

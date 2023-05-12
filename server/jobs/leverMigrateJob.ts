@@ -16,7 +16,7 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService("", false, true);
-        let take: number = 3
+        let take: number = 1
         let leverData: any[];
 
 
@@ -24,8 +24,9 @@ export class LeverMigrateJob {
             do {
                 leverData = await LeverDataRepository.find({
                     where: {
-                        isSynced: false,
-                        hasError: false
+                        oppLeverId: 'f7bfe8ee-19b2-4a9f-b1df-7029e641f5c1'
+                        // isSynced: false,
+                        // hasError: false
                     },
                     take: take,
                     order: {
@@ -38,14 +39,14 @@ export class LeverMigrateJob {
 
                     console.log(`Processing opportunity : ${opportunity?.id}`)
 
-                    // let postingIds: any[] = []
-                    //
-                    // for (const application of opportunity?.applications) {
-                    //     if (data?.postings[application?.posting] === "")
-                    //         data.postings[application?.posting] = []
-                    //
-                    //     postingIds = [data?.postings[application?.posting]] ?? []
-                    // }
+                    let postingIds: any[] = []
+
+                    for (const application of opportunity?.applications) {
+                        if (data?.postings[application?.posting] === "")
+                            data.postings[application?.posting] = []
+
+                        postingIds = [data?.postings[application?.posting]] ?? []
+                    }
 
                     let owner = opportunity?.owner?.email;
 
@@ -54,16 +55,16 @@ export class LeverMigrateJob {
                     let stage = data?.stages[opportunity?.stage?.text];
                     let stageId = await this.getMapping(null, stage);
 
-                    // let archiveId;
-                    // if (opportunity?.archived) {
-                    //     archiveId = data?.archiveReasons[opportunity?.archived?.reason]
-                    // }
+                    let archiveId;
+                    if (opportunity?.archived) {
+                        archiveId = data?.archiveReasons[opportunity?.archived?.reason]
+                    }
 
                     let performAs = userId ? userId : "307d977b-d9e5-442e-830b-307e38ce78e9"
 
                     // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
-                    let mappingData: LeverCandidate = await Lever2leverMappingService.mapOpportunity(opportunity, ["5aa8aca8-0d6a-4ec3-82cf-c5381379080a"], "lead-responded", "9006ee12-aca4-43ba-9c4d-7a6309b05a9b", "46e113e8-69fe-4685-a166-0fa15e3f6028");
+                    let mappingData: LeverCandidate = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stageId, archiveId, performAs);
 
                     let downloadUrls = await this.downloadOppFiles(oppData, dir);
 
@@ -77,20 +78,20 @@ export class LeverMigrateJob {
                         resumeUrl = []
                     }
 
-                    let response = await leverApiService.addOpportunityWithMultipart("46e113e8-69fe-4685-a166-0fa15e3f6028", mappingData, resumeUrl[0])
-
-                    if (response?.status === 201 && response?.data) {
-                        oppData.targetOppLeverId = response.data?.id;
-                        oppData.isSynced = true;
-                        oppData.migrateDate = new Date();
-                        console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id} | opp owner - ${performAs}`)
-                    } else {
-                        oppData.hasError = true;
-                        oppData.isSynced = true;
-                        oppData.failureLog = `Error Payload: ${JSON.stringify(response)} | Opp Payload - ${JSON.stringify(mappingData)}`;
-
-                        console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
-                    }
+                    // let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0])
+                    //
+                    // if (response?.status === 201 && response?.data) {
+                    //     oppData.targetOppLeverId = response.data?.id;
+                    //     oppData.isSynced = true;
+                    //     oppData.migrateDate = new Date();
+                    //     console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id} | opp owner - ${performAs}`)
+                    // } else {
+                    //     oppData.hasError = true;
+                    //     oppData.isSynced = true;
+                    //     oppData.failureLog = `Error Payload: ${JSON.stringify(response)} | Opp Payload - ${JSON.stringify(mappingData)}`;
+                    //
+                    //     console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
+                    // }
 
                     await LeverDataRepository.save(oppData);
 
@@ -98,10 +99,10 @@ export class LeverMigrateJob {
                     let oppProfileForms: any = [];
 
                     for (const profileForm of profileForms) {
-                        oppProfileForms = profileForm?.fields.map(i => {
+                        oppProfileForms = profileForm?.fields?.map(i => {
                             let body = `Profile Form\n`;
                             body += `Text  ->  ${i?.text}\n`;
-                            body += `Value ->  ${i?.value}\n`;
+                            body += `Value ->  ${JSON.stringify(i?.value)}`;
 
                             return body
                         })
@@ -114,7 +115,7 @@ export class LeverMigrateJob {
 
                             let body = `Feedback\n`;
                             body += `Text  ->  ${i?.text}\n`;
-                            body += `Value ->  ${i?.value}\n`;
+                            body += `Value ->  ${JSON.stringify(i?.value)}`;
 
                             return body
                         });
@@ -134,18 +135,18 @@ export class LeverMigrateJob {
                     createOppNotes?.push(...oppFeedbackForms)
 
                     let noteIDs: any = []
-                    if (response?.data?.id) {
+                    // if (response?.data?.id) {
                         for (const note of createOppNotes) {
                             let response = await leverApiService.addNote(oppData?.targetOppLeverId, note, true)
                             if (response?.status === 201 && response.data !== null) {
                                 noteIDs.push(response?.data?.noteId)
-                                console.log(`created notes successfully for opp id: ${oppData.oppLeverId}`)
+                                console.log(`created notes successfully for opp id: ${oppData?.targetOppLeverId}`)
                             } else {
-                                console.error(`Failed to create notes for ${oppData.oppLeverId} Error: ${JSON.stringify(response.data)}`)
+                                console.error(`Failed to create notes for ${oppData?.targetOppLeverId} Error: ${JSON.stringify(response?.data)}`)
                             }
                         }
                         oppData.noteId = noteIDs;
-                    }
+                    // }
 
                     await this.uploadOppFiles(oppData?.targetOppLeverId, oppData?.otherFileUrls, performAs)
 
@@ -194,8 +195,6 @@ export class LeverMigrateJob {
 
                     fileName?.length > 15 ? fileName.substr(15) : fileName
                     oppFile = `${baseFileDir}/${fileName}`;
-
-                    console.log(oppFile);
 
                     if (otherFile?.size > 31000000) {
                         // as the limit is 30 mb , we are only saving files below 30mb to DB, but downloading the same to local
@@ -258,7 +257,7 @@ export class LeverMigrateJob {
                     let response = await leverApiService.uploadOppFiles(oppId, file, performAs);
                     if (response?.status === 200 && response?.data) {
                         downloadedFiles.push(response?.data?.id);
-                        console.log(`Successfully uploaded file for oppId: ${oppId}`)
+                        // console.log(`Successfully uploaded file for oppId: ${oppId}`)
                     } else {
                         console.log(`Error while uploading files ${JSON.stringify(response?.data)}`)
                     }

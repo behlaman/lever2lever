@@ -209,7 +209,7 @@ export class LeverApiService {
                 await this.sleep(30000);
             }
 
-            return this.handle429Requests(url, ++recursionFactor);
+            return this.handle429Response(url, ++recursionFactor);
 
         } else if (response?.status === 429 && recursionFactor > 20) {
             console.error(
