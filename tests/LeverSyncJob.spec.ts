@@ -87,7 +87,6 @@ export class LeverSyncJobSpec extends BaseTest {
             console.log(data)
             return data;
         }
-
     }
 
 
@@ -110,6 +109,15 @@ export class LeverSyncJobSpec extends BaseTest {
     async parseCSV() {
         const job = new LeverMigrateJob()
         await job.parseCsv()
+    }
+
+
+    @test("regex test")
+    async parseString() {
+        let string = "歴史的業績の説明 2022年5月8日 中西直明.pdf"
+
+        let a = string.includes("\u001b") ? string.replace(/\u001b/g, "") : string
+        console.log(a)
     }
 }
 

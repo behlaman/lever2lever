@@ -6,6 +6,7 @@ import * as fs from "fs";
 import {LeverData} from "../domain/entities/lever2lever/LeverData";
 import csv = require("csvtojson/index");
 import {LeverCandidate} from "../domain/entities/lever/LeverCandidate";
+import {chunk} from "lodash";
 
 export class LeverMigrateJob {
     async migrateOpportunities(): Promise<any> {
@@ -32,18 +33,19 @@ export class LeverMigrateJob {
                     }
                 });
 
-                const leverOppPromise: any[] = leverData.flatMap(async oppData => {
-
+                const leverOppPromise = leverData.flatMap(async oppData => {
                     const opportunity: any = oppData?.recordData;
 
-                    let postingIds: any[] = []
+                    console.log(`Processing opportunity : ${opportunity?.id}`)
 
-                    for (const application of opportunity?.applications) {
-                        if (data?.postings[application?.posting] === "")
-                            data.postings[application?.posting] = []
-
-                        postingIds = [data?.postings[application?.posting]] ?? []
-                    }
+                    // let postingIds: any[] = []
+                    //
+                    // for (const application of opportunity?.applications) {
+                    //     if (data?.postings[application?.posting] === "")
+                    //         data.postings[application?.posting] = []
+                    //
+                    //     postingIds = [data?.postings[application?.posting]] ?? []
+                    // }
 
                     let owner = opportunity?.owner?.email;
 
@@ -52,31 +54,30 @@ export class LeverMigrateJob {
                     let stage = data?.stages[opportunity?.stage?.text];
                     let stageId = await this.getMapping(null, stage);
 
-                    let archiveId;
-                    if (opportunity?.archived) {
-                        archiveId = data?.archiveReasons[opportunity?.archived?.reason]
-                    }
+                    // let archiveId;
+                    // if (opportunity?.archived) {
+                    //     archiveId = data?.archiveReasons[opportunity?.archived?.reason]
+                    // }
 
                     let performAs = userId ? userId : "307d977b-d9e5-442e-830b-307e38ce78e9"
 
                     // client owner Id to use for migration - 307d977b-d9e5-442e-830b-307e38ce78e9
 
-                    let mappingData: LeverCandidate = await Lever2leverMappingService.mapOpportunity(opportunity, postingIds, stageId, archiveId, performAs);
+                    let mappingData: LeverCandidate = await Lever2leverMappingService.mapOpportunity(opportunity, ["5aa8aca8-0d6a-4ec3-82cf-c5381379080a"], "lead-responded", "9006ee12-aca4-43ba-9c4d-7a6309b05a9b", "46e113e8-69fe-4685-a166-0fa15e3f6028");
 
-                    await this.downloadOppFiles(leverData, dir, oppData.oppLeverId);
+                    let downloadUrls = await this.downloadOppFiles(oppData, dir);
 
-                    let resumeUrl = oppData?.resumeUrl ?? "";
-                    let otherFileUrl = oppData?.otherFileUrls ?? [];
+                    oppData.resumeUrl = downloadUrls?.resumeUrl
+                    oppData.otherFileUrls = downloadUrls?.otherFileUrls;
+                    oppData.excludedFileUrls = downloadUrls?.excludedFileUrls
+
+                    let resumeUrl = downloadUrls?.resumeUrl ?? "";
 
                     if ((fs.existsSync(resumeUrl))) {
                         resumeUrl = []
                     }
 
-                    if ((fs.existsSync(otherFileUrl))) {
-                        otherFileUrl = []
-                    }
-
-                    let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0], otherFileUrl)
+                    let response = await leverApiService.addOpportunityWithMultipart("46e113e8-69fe-4685-a166-0fa15e3f6028", mappingData, resumeUrl[0])
 
                     if (response?.status === 201 && response?.data) {
                         oppData.targetOppLeverId = response.data?.id;
@@ -86,9 +87,7 @@ export class LeverMigrateJob {
                     } else {
                         oppData.hasError = true;
                         oppData.isSynced = true;
-                        oppData.failureLog = `Error: ${response?.error} | Opp Payload - ${JSON.stringify(mappingData)}`;
-
-                        console.log(`opp payload: ${JSON.stringify(mappingData)} for id : ${opportunity.id}`)
+                        oppData.failureLog = `Error Payload: ${JSON.stringify(response)} | Opp Payload - ${JSON.stringify(mappingData)}`;
 
                         console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
                     }
@@ -96,18 +95,19 @@ export class LeverMigrateJob {
                     await LeverDataRepository.save(oppData);
 
                     const profileForms = oppData?.profileForms;
-                    let oppProfileForms;
+                    let oppProfileForms: any = [];
 
                     for (const profileForm of profileForms) {
                         oppProfileForms = profileForm?.fields.map(i => {
-                            let body = `Text -> ${i?.text}\n`;
-                            body += `Value -> ${i?.value}\n`;
+                            let body = `Profile Form\n`;
+                            body += `Text  ->  ${i?.text}\n`;
+                            body += `Value ->  ${i?.value}\n`;
 
                             return body
                         })
                     }
 
-                    let oppFeedbackForms;
+                    let oppFeedbackForms: any = [];
                     const feedBackForms = oppData?.feedbackForms;
                     for (const feedBackForm of feedBackForms) {
                         oppFeedbackForms = feedBackForm?.fields.map(i => {
@@ -147,8 +147,10 @@ export class LeverMigrateJob {
                         oppData.noteId = noteIDs;
                     }
 
+                    await this.uploadOppFiles(oppData?.targetOppLeverId, oppData?.otherFileUrls, performAs)
+
                     await LeverDataRepository.save(oppData)
-                });
+                })
 
                 await Promise.all(leverOppPromise);
 
@@ -158,70 +160,111 @@ export class LeverMigrateJob {
         }
     }
 
-    async downloadOppFiles(processBatch: LeverData[], dir: string, oppId: string): Promise<any> {
+    async downloadOppFiles(opp: LeverData, dir: string): Promise<any> {
         try {
             let resumeFileUrls: any[] = []
             let otherFileUrls: any[] = []
+            let largeFileUrls: any[] = []
             let resumeFiles
             let offers
             let downloadFiles = [];
 
-            const filesDownloadPromise = processBatch.map(async (opp: LeverData): Promise<any> => {
+            let oppFile
 
-                let resumes = opp?.resumes?.filter(x => x?.id && x?.file?.name);
+            let resumes = opp?.resumes?.filter(x => x?.id && x?.file?.name);
 
-                if (resumes)
-                    for (const resume of resumes) {
-                        resume?.file?.name.length > 15 ? resume?.file?.name.substr(8) : resume?.file?.name
+            if (resumes)
+                for (const resume of resumes) {
+                    resume?.file?.name.length > 15 ? resume?.file?.name.substr(8) : resume?.file?.name
 
-                        resumeFiles = `${dir}/resumes/${resume?.file?.name}`
-                        downloadFiles.push(this.downloadResumes(opp.oppLeverId, resume?.id, resumeFiles));
-                        opp.resumeUrl = [resumeFiles]
-                        resumeFileUrls.push(opp)
-                    }
-
-
-                let otherFiles = opp?.otherFiles?.filter(x => x?.id && x?.name)
-
-                if (otherFiles)
-                    for (const otherFile of otherFiles) {
-                        otherFile?.name.length > 15 ? otherFile?.name.substr(15) : otherFile?.name
-
-                        otherFiles = `${dir}/otherFiles/${otherFile?.name}`;
-                        downloadFiles.push(this.downloadFiles(opp.oppLeverId, otherFile?.id, otherFiles));
-                        opp.otherFileUrls = [otherFiles]
-                        otherFileUrls.push(opp)
-                    }
+                    resumeFiles = `${dir}/resumes/${resume?.file?.name}`
+                    downloadFiles.push(this.downloadResumes(opp.oppLeverId, resume?.id, resumeFiles));
+                    resumeFileUrls.push(resumeFiles)
+                }
 
 
-                let offerData = opp?.offers?.filter(x => x?.id && x?.signedDocument);
+            let otherFiles = opp?.otherFiles?.filter(x => x?.id && x?.name)
 
-                if (offerData)
-                    for (const offer of offerData) {
-                        offers = `${dir}/offers/${offer?.signedDocument}`;
-                        downloadFiles.push(this.downloadOffers(opp.oppLeverId, offer?.id, offers));
-                        opp.otherFileUrls = [offers]
-                        otherFileUrls.push(opp)
-                    }
+            let baseFileDir = `${dir}/otherFiles`
+            let largeFileDir
 
-                const status = await Promise.allSettled(downloadFiles)
+            if (otherFiles)
+                for (const otherFile of otherFiles) {
+                    let fileName = otherFile?.name.includes("\u001b") ? (otherFile?.name).replace(/[^a-zA-Z0-9.]+/g, "_") : otherFile?.name
 
-                status.forEach(x => {
-                    return x.status === "fulfilled"
-                })
-            });
+                    fileName?.length > 15 ? fileName.substr(15) : fileName
+                    oppFile = `${baseFileDir}/${fileName}`;
 
-            await Promise.all(filesDownloadPromise)
-            await LeverDataRepository.save(resumeFileUrls);
-            await LeverDataRepository.save(otherFileUrls);
+                    console.log(oppFile);
 
-            console.log(`Downloaded files - resumes: ${resumeFileUrls.length} otherFiles: ${otherFileUrls.length} for opportunity: ${oppId}`)
+                    if (otherFile?.size > 31000000) {
+                        // as the limit is 30 mb , we are only saving files below 30mb to DB, but downloading the same to local
 
-            resumeFileUrls = [];
-            otherFileUrls = [];
+                        largeFileDir = `${baseFileDir}/${opp?.oppLeverId}`
+                        if (!fs.existsSync(largeFileDir))
+                            fs.mkdirSync(largeFileDir, {recursive: true});
+
+                        oppFile = `${largeFileDir}/${otherFile?.name}`
+                        largeFileUrls.push(oppFile)
+                    } else otherFileUrls.push(oppFile)
+
+                    downloadFiles.push(this.downloadFiles(opp.oppLeverId, otherFile?.id, oppFile));
+                }
+
+
+            let offerData = opp?.offers?.filter(x => x?.id && x?.signedDocument);
+
+            if (offerData)
+                for (const offer of offerData) {
+                    offers = `${dir}/offers/${offer?.signedDocument}`;
+                    downloadFiles.push(this.downloadOffers(opp.oppLeverId, offer?.id, offers));
+                    otherFileUrls.push(offers);
+                }
+
+            const status = await Promise.allSettled(downloadFiles)
+
+            status.forEach(x => {
+                return x.status === "fulfilled"
+            })
+
+            console.log(`Downloaded files - resumes: ${resumeFileUrls?.length} otherFiles: ${otherFileUrls?.length} largeFile: ${largeFileUrls?.length} for opportunity: ${opp.oppLeverId}`)
+
+            return {
+                resumeUrl: resumeFileUrls,
+                otherFileUrls: otherFileUrls,
+                excludedFileUrls: largeFileUrls
+            }
 
         } catch (e) {
             console.error(e, e.message);
+        }
+    }
+
+
+    async uploadOppFiles(oppId: string, files: string[], performAs: string): Promise<any> {
+
+        const leverApiService = new LeverApiService("", false, true);
+
+        if (!files)
+            console.log(`No files available for opp id: ${oppId}`);
+
+        const fileBatch = chunk(files, 5)
+
+        let downloadedFiles = []
+
+        if (oppId) {
+            for (const fileArr of fileBatch) {
+                await Promise.all(fileArr.map(async file => {
+                    let response = await leverApiService.uploadOppFiles(oppId, file, performAs);
+                    if (response?.status === 200 && response?.data) {
+                        downloadedFiles.push(response?.data?.id);
+                        console.log(`Successfully uploaded file for oppId: ${oppId}`)
+                    } else {
+                        console.log(`Error while uploading files ${JSON.stringify(response?.data)}`)
+                    }
+                }))
+                console.log(`uploaded  ${downloadedFiles?.length} files for opp: ${oppId}`)
+            }
         }
     }
 
@@ -284,8 +327,10 @@ export class LeverMigrateJob {
     async downloadFiles(oppId: string, otherFilesId: string, dir: string): Promise<any> {
         const leverApiService = new LeverApiService("", true, false);
 
+        // console.log('entered func')
         let fileRes = await leverApiService.downloadFiles(oppId, otherFilesId);
 
+        // console.log('response')
         if (fileRes?.status === 200 && fileRes?.data) {
             let writeStream = fs.createWriteStream(dir);
             fileRes?.data.pipe(writeStream);
@@ -295,7 +340,7 @@ export class LeverMigrateJob {
                     writeStream.end();
                     resolve(true);
                 });
-            });
+            })
         } else {
             console.log(fileRes.data?.statusMessage, fileRes?.data?.statusCode);
         }

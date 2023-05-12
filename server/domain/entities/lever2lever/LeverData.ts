@@ -18,19 +18,19 @@ export class LeverData extends BaseEntity {
     @Index()
     targetOppLeverId: string;
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     oppOwner: any;
 
     @Column("json", {nullable: true})
     recordData: LeverCandidate[];
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     offers: Offer[];
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     resumes: any;
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     notes: any;
 
     @Column({type: "varchar", array: true, nullable: true})
@@ -39,19 +39,22 @@ export class LeverData extends BaseEntity {
     @Column({type: "varchar", array: true, nullable: true})
     otherFileUrls: any[];
 
-    @Column("jsonb", {nullable: true})
+    @Column({type: "varchar", array: true, nullable: true})
+    excludedFileUrls: any[];
+
+    @Column("json", {nullable: true})
     otherFiles: any;
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     feedbackForms: any;
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     profileForms: any;
 
     @Column({type: "varchar", array: true, nullable: true})
     noteId: string[];
 
-    @Column("jsonb", {nullable: true})
+    @Column("json", {nullable: true})
     failureLog: any;
 
     @Column({default: false})

@@ -27,13 +27,14 @@ export class Lever2leverMappingService {
 
         targetOpp.headline = opportunity.headline;
 
-        targetOpp.createdAt = opportunity.createdAt;
+        // we are subtracting 24 hrs if createdAt > archivedAt
+        targetOpp.createdAt = opportunity.createdAt > opportunity.archived?.archivedAt ? (opportunity?.createdAt - 86400000) : opportunity.createdAt
 
         targetOpp.origin = opportunity.origin;
 
         targetOpp.sources = opportunity.sources;
 
-        targetOpp.owner = ownerId;
+        targetOpp.owner = "46e113e8-69fe-4685-a166-0fa15e3f6028";
 
         targetOpp.tags = opportunity.tags;
 
@@ -43,7 +44,7 @@ export class Lever2leverMappingService {
 
         targetOpp.archived = {
             reason: oppArchived,
-            archivedAt: opportunity?.archived?.archivedAt ?? null
+            archivedAt: opportunity?.createdAt < opportunity?.archived?.archivedAt ? opportunity?.archived?.archivedAt : new Date().valueOf()
         };
 
         targetOpp.postings = postingIds ?? [];

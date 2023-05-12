@@ -1,4 +1,4 @@
-import {AxiosInstance, AxiosResponse, default as Axios} from "axios";
+import {AxiosInstance, default as Axios} from "axios";
 import * as config from "config";
 import * as fs from "fs";
 import {Archived} from "../server/domain/entities/lever/Application";
@@ -77,8 +77,8 @@ export class LeverApiService {
     }
 
     async downloadResumes(oppId: string, resumeId: string, status?: string): Promise<{ status: number, data: any }> {
-        let response = await this.axios.get(`/opportunities/${oppId}/resumes/${resumeId}/download`, {responseType: "stream"}).catch(e => e.response);
-        return this.parseResponse(response);
+        let res = await this.axios.get(`/opportunities/${oppId}/resumes/${resumeId}/download`, {responseType: "stream"}).catch(e => e.response);
+        return this.parseResponse(res);
     }
 
     async downloadOfferFile(oppId: string, offerId: string): Promise<{ status: number, data: any }> {
@@ -87,8 +87,7 @@ export class LeverApiService {
     }
 
     async downloadFiles(oppId: string, fileId: string): Promise<{ status: number, data: any }> {
-        let res = await this.axios.get(`/opportunities/${oppId}/files/${fileId}/download`, {responseType: "stream"}).catch(e => e.response);
-        return this.parseResponse(res);
+        return await this.handle429Response(`/opportunities/${oppId}/files/${fileId}/download`, 0)
     }
 
     async getOffers(oppId: string): Promise<{ status: number, data: any }> {
@@ -111,7 +110,6 @@ export class LeverApiService {
 
     async getStages(): Promise<{ status: number, data: any }> {
         let res = await this.axios.get(`/stages`).catch(e => e.response).catch(e => e.response);
-        ;
         return this.parseResponse(res);
     }
 
@@ -124,7 +122,7 @@ export class LeverApiService {
         performAs: string,
         data: any,
         resumeFile: string,
-        files: string[]
+        files?: string[]
     ): Promise<{ data: any; error: any; status: number }> {
         let formData = new FormData();
 
@@ -164,7 +162,7 @@ export class LeverApiService {
             formData.append("resumeFile", fs.createReadStream(resumeFile));
         }
 
-        let response = await this.getResponse(`/opportunities?perform_as=${performAs}`, formData, 20);
+        let response = await this.getResponse(`/opportunities?perform_as=${performAs}`, formData);
 
         return {
             status: response.status ? response.status : -1,
@@ -187,40 +185,81 @@ export class LeverApiService {
         return this.getResponse(`/opportunities/${leverId}/notes`, data).catch((e) => e.response)
     }
 
-    // async handle429Requests(url: string, recursionFactor: number = 0): Promise<ApiResponse> {
-    //     const response: any = await this.axios
-    //         .get(url, {
-    //             headers: {
-    //                 "Content-Type": "application/json"
-    //             },
-    //             maxContentLength: Infinity,
-    //             maxBodyLength: Infinity,
-    //         })
-    //         .catch((e) => {
-    //             console.log(e.response?.data?.message);
-    //         });
-    //
-    //     if (response?.status === 429 && recursionFactor < 20) {
-    //         const requestAllowed = response?.headers["X-RateLimit-Remaining"] ?? 11;
-    //
-    //         if (requestAllowed <= 6 && requestAllowed >= 4) {
-    //             await this.sleep(10000);
-    //         } else if (requestAllowed <= 4 && requestAllowed >= 2) {
-    //             await this.sleep(20000);
-    //         } else {
-    //             await this.sleep(30000);
-    //         }
-    //
-    //         return this.getResponse(url, ++recursionFactor);
-    //
-    //     } else if (response?.status === 429 && recursionFactor > 20) {
-    //         console.error(
-    //             new Error(`Max Retry attempts for Lever API already done for URL[${url}]`)
-    //         );
-    //     }
-    //
-    //     return this.parseResponse(response);
-    // }
+    async handle429Response(url: string, recursionFactor: number = 0): Promise<ApiResponse> {
+        const response: any = await this.axios
+            .get(url, {
+                responseType: "stream",
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            })
+            .catch(e => {
+                return e.response;
+            });
+
+        if (response?.status === 429 && recursionFactor < 20) {
+            const requestAllowed = 11;
+
+            console.log(`Retrying opp request due to 429`);
+
+            if (requestAllowed <= 6 && requestAllowed >= 4) {
+                await this.sleep(10000);
+            } else if (requestAllowed <= 4 && requestAllowed >= 2) {
+                await this.sleep(20000);
+            } else {
+                await this.sleep(30000);
+            }
+
+            return this.handle429Requests(url, ++recursionFactor);
+
+        } else if (response?.status === 429 && recursionFactor > 20) {
+            console.error(
+                new Error(`Max Retry attempts for Lever API already done for URL[${url}]`)
+            );
+        }
+        return this.parseResponse(response);
+    }
+
+    async handle429Requests(url: string, data: any, recursionFactor: number = 0): Promise<ApiResponse> {
+        const response: any = await this.axios
+            .post(url, data, {
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity,
+            })
+            .catch(e => {
+                return e.response;
+            });
+
+        if (response?.status === 429 && recursionFactor < 20) {
+            const requestAllowed = 11;
+
+            if (requestAllowed <= 6 && requestAllowed >= 4) {
+                await this.sleep(10000);
+            } else if (requestAllowed <= 4 && requestAllowed >= 2) {
+                await this.sleep(20000);
+            } else {
+                await this.sleep(30000);
+            }
+
+            return this.handle429Requests(url, data, ++recursionFactor);
+
+        } else if (response?.status === 429 && recursionFactor > 20) {
+            console.error(
+                new Error(`Max Retry attempts for Lever API already done for URL[${url}]`)
+            );
+        }
+        return this.parseResponse(response);
+    }
+
+    async uploadOppFiles(oppId: string, filePath: string, performAs: string): Promise<any> {
+        let formData = new FormData();
+
+        formData.append("file", fs.createReadStream(filePath));
+
+        return await this.handle429Requests(`/opportunities/${oppId}/files?perform_as=${performAs}`, formData)
+    }
 
     async getResponse<T>(url: string, body: any, recursionFactor: number = 0): Promise<ApiResponse> {
         const response: any = await this.axios
@@ -228,11 +267,13 @@ export class LeverApiService {
                 headers: {
                     "Content-Type": "application/json"
                 },
+
                 maxContentLength: Infinity,
                 maxBodyLength: Infinity,
             })
             .catch((e) => {
-                console.log(e.response?.data?.message);
+                // console.log(e.response?.data?.message);
+                return e?.response
             });
 
         if (response?.status === 429 && recursionFactor < 20) {
@@ -257,6 +298,7 @@ export class LeverApiService {
 
     parseResponse(response: any): ApiResponse {
         let data;
+        // console.log('inside parse res')
         if (response) {
             if (response.data) {
                 if (response.data.data) {
