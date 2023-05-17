@@ -102,40 +102,4 @@ export class LeverSyncJob {
 
         return obj;
     }
-
-
-    async getPostings(): Promise<any> {
-        let limit: Number = 100;
-        let page: number = 1;
-        let offset: string = "";
-        let count = 0
-
-        let allPostings
-        let postingRec = []
-
-        const leverApiService = new LeverApiService(config.get("lever.sourceKey"), false, true);
-
-        do {
-            allPostings = await leverApiService.getPostings(limit, offset);
-
-            if (allPostings?.status !== 200 && allPostings?.data.data?.length === 0) return;
-
-            offset = allPostings.data?.next ?? "";
-
-            postingRec.push(...allPostings?.data?.data.map(x => x.id));
-
-            count += postingRec.length;
-
-            console.log(postingRec);
-
-            console.log(`exported ${count} postings`);
-
-            postingRec = [];
-
-            page++
-        } while (allPostings?.data?.hasNext === true)
-
-        return {postings: postingRec};
-    }
-
 }

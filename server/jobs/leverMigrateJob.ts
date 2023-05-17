@@ -16,7 +16,7 @@ export class LeverMigrateJob {
         let data = await this.parseCsv()
 
         const leverApiService = new LeverApiService("", false, true);
-        let take: number = 1
+        let take: number = 3
         let leverData: any[];
 
 
@@ -24,9 +24,8 @@ export class LeverMigrateJob {
             do {
                 leverData = await LeverDataRepository.find({
                     where: {
-                        oppLeverId: 'f7bfe8ee-19b2-4a9f-b1df-7029e641f5c1'
-                        // isSynced: false,
-                        // hasError: false
+                        isSynced: false,
+                        hasError: false
                     },
                     take: take,
                     order: {
@@ -78,20 +77,20 @@ export class LeverMigrateJob {
                         resumeUrl = []
                     }
 
-                    // let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0])
-                    //
-                    // if (response?.status === 201 && response?.data) {
-                    //     oppData.targetOppLeverId = response.data?.id;
-                    //     oppData.isSynced = true;
-                    //     oppData.migrateDate = new Date();
-                    //     console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id} | opp owner - ${performAs}`)
-                    // } else {
-                    //     oppData.hasError = true;
-                    //     oppData.isSynced = true;
-                    //     oppData.failureLog = `Error Payload: ${JSON.stringify(response)} | Opp Payload - ${JSON.stringify(mappingData)}`;
-                    //
-                    //     console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
-                    // }
+                    let response = await leverApiService.addOpportunityWithMultipart(performAs, mappingData, resumeUrl[0])
+
+                    if (response?.status === 201 && response?.data) {
+                        oppData.targetOppLeverId = response.data?.id;
+                        oppData.isSynced = true;
+                        oppData.migrateDate = new Date();
+                        console.log(`Created opportunity ${response?.data?.id} for id: ${opportunity.id} | opp owner - ${performAs}`)
+                    } else {
+                        oppData.hasError = true;
+                        oppData.isSynced = true;
+                        oppData.failureLog = `Error Payload: ${JSON.stringify(response)} | Opp Payload - ${JSON.stringify(mappingData)}`;
+
+                        console.log(`Error while creating target opp for id: ${opportunity.id} | ERROR: ${JSON.stringify(response.data)}`)
+                    }
 
                     await LeverDataRepository.save(oppData);
 
@@ -111,7 +110,7 @@ export class LeverMigrateJob {
                     let oppFeedbackForms: any = [];
                     const feedBackForms = oppData?.feedbackForms;
                     for (const feedBackForm of feedBackForms) {
-                        oppFeedbackForms = feedBackForm?.fields.map(i => {
+                        oppFeedbackForms = feedBackForm?.fields?.map(i => {
 
                             let body = `Feedback\n`;
                             body += `Text  ->  ${i?.text}\n`;
@@ -126,18 +125,33 @@ export class LeverMigrateJob {
                     const oppNotes = oppData?.notes;
                     let createOppNotes: any = [];
 
+
+                    const oppOwner = oppData?.oppOwner;
+
                     for (const oppNote of oppNotes) {
                         createOppNotes = oppNote?.fields?.map(x => {
-                            return x?.value
+                            let body = `Author Email  ->  ${owner ? owner : "yuya.harada@woven-planet.global"}\n`;
+                            body += `Value ->  ${x?.value}`;
+
+                            return body
                         })
                     }
 
                     createOppNotes?.push(...oppFeedbackForms)
 
+                    let noteData: string = "";
+
+                    if (oppNotes?.length === 0) {
+                        noteData = `Author Name ->  ${oppOwner?.name ?? "Yuya Harada"}\n`;
+                        noteData += `Author Email -> ${owner ? owner : "yuya.harada@woven-planet.global"}`;
+
+                        createOppNotes?.push(noteData)
+                    }
+
                     let noteIDs: any = []
-                    // if (response?.data?.id) {
+                    if (response?.data?.id) {
                         for (const note of createOppNotes) {
-                            let response = await leverApiService.addNote(oppData?.targetOppLeverId, note, true)
+                            let response = await leverApiService.addNote(performAs, oppData?.targetOppLeverId, note, true)
                             if (response?.status === 201 && response.data !== null) {
                                 noteIDs.push(response?.data?.noteId)
                                 console.log(`created notes successfully for opp id: ${oppData?.targetOppLeverId}`)
@@ -146,7 +160,7 @@ export class LeverMigrateJob {
                             }
                         }
                         oppData.noteId = noteIDs;
-                    // }
+                    }
 
                     await this.uploadOppFiles(oppData?.targetOppLeverId, oppData?.otherFileUrls, performAs)
 
@@ -191,10 +205,12 @@ export class LeverMigrateJob {
 
             if (otherFiles)
                 for (const otherFile of otherFiles) {
-                    let fileName = otherFile?.name.includes("\u001b") ? (otherFile?.name).replace(/[^a-zA-Z0-9.]+/g, "_") : otherFile?.name
+                    let fileName = otherFile?.name.includes("\u001b") ? (otherFile?.name).replace(/[^a-zA-Z0-9.]/g, "_") : otherFile?.name
 
-                    fileName?.length > 15 ? fileName.substr(15) : fileName
-                    oppFile = `${baseFileDir}/${fileName}`;
+                    let file = fileName?.includes("/") ? fileName.replace("/", "_") : fileName;
+
+                    file?.length > 15 ? file.substr(15) : file
+                    oppFile = `${baseFileDir}/${file}`;
 
                     if (otherFile?.size > 31000000) {
                         // as the limit is 30 mb , we are only saving files below 30mb to DB, but downloading the same to local
@@ -289,6 +305,9 @@ export class LeverMigrateJob {
         let response = await leverApiService.downloadResumes(oppId, resumeId);
 
         if (response?.status === 200 && response?.data) {
+            if (!dir)
+                return
+
             let writeStream = fs.createWriteStream(dir);
             response?.data.pipe(writeStream);
 
@@ -298,6 +317,8 @@ export class LeverMigrateJob {
                     resolve(true);
                 });
             });
+        } else if (response?.status === 422) {
+            console.log(`Cannot Download resume due to : ${response?.data?.statusMessage}`)
         } else {
             console.log(response.data?.statusMessage, response?.data?.statusCode);
         }
@@ -326,10 +347,8 @@ export class LeverMigrateJob {
     async downloadFiles(oppId: string, otherFilesId: string, dir: string): Promise<any> {
         const leverApiService = new LeverApiService("", true, false);
 
-        // console.log('entered func')
         let fileRes = await leverApiService.downloadFiles(oppId, otherFilesId);
 
-        // console.log('response')
         if (fileRes?.status === 200 && fileRes?.data) {
             let writeStream = fs.createWriteStream(dir);
             fileRes?.data.pipe(writeStream);

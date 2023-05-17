@@ -5,6 +5,9 @@ import {LeverApiService} from "../services/leverApiService";
 import * as config from "config";
 import {LeverDataRepository} from "../server/db/lever/LeverDataRepository";
 import {LeverMigrateJob} from "../server/jobs/leverMigrateJob";
+import {IsNull, Not} from "typeorm";
+import {id} from "inversify";
+import * as csvWriter from "csv-writer";
 
 @suite("Lever Sync Job", timeout(800000000000000000000))
 export class LeverSyncJobSpec extends BaseTest {
@@ -70,6 +73,40 @@ export class LeverSyncJobSpec extends BaseTest {
         await job.migrateOpportunities();
     }
 
+    @test("Get Corresponding opp Ids from target")
+    async getIDs() {
+
+        let data = await LeverDataRepository.find({
+            where: {
+                isSynced: true,
+                hasError: false
+            },
+            order: {id: "ASC"}
+        })
+
+        let oppObj = {};
+
+        data.flatMap(oppData => {
+            oppObj[oppData['oppLeverId']] = oppData['targetOppLeverId'];
+        })
+
+        // console.log(oppObj);
+
+        let fileName = `./temp/oppFiles_${new Date().valueOf()}.csv`;
+        const writer = csvWriter.createObjectCsvWriter({
+            path: fileName,
+            header: [
+                {id: "oppLeverId", title: "Source Opp ID"},
+                {id: "targetOppLeverId", title: "Target Opp ID"},
+            ]
+        });
+
+        await writer.writeRecords(data);
+
+        console.log(oppObj);
+
+    }
+
 
     @test("get archive reasons")
     async getAR() {
@@ -114,16 +151,44 @@ export class LeverSyncJobSpec extends BaseTest {
 
     @test("regex test")
     async parseString() {
-        let string = "歴史的業績の説明 2022年5月8日 中西直明.pdf"
+        let string = "Mariko/Interviewers.eml"
 
-        let a = string.includes("\u001b") ? string.replace(/\u001b/g, "") : string
+        let a = string?.includes("/") ? string.replace("/", "_") : string
         console.log(a)
     }
 
+    @test("getFailedPostings csv")
+    async getPostingsCsv() {
+
+        let failedRecords = await LeverDataRepository.find({
+            where: {
+                isSynced: true,
+                hasError: true
+            }
+        })
+
+        let data = {}
+
+        failedRecords.flatMap(x => {
+            data[x['oppLeverId']] = x['failureLog']
+        })
+
+        let fileName = `./temp/invalid_Postings_${new Date().valueOf()}.csv`;
+        const writer = csvWriter.createObjectCsvWriter({
+            path: fileName,
+            header: [
+                {id: "oppLeverId", title: "Source Opp ID"},
+                {id: "failureLog", title: "Failure Log"},
+            ]
+        });
+
+        await writer.writeRecords(failedRecords);
+
+
+    }
 
     @test("update_db")
     async updateDataRecords() {
-
         await LeverDataRepository.update({isSynced: true}, {
             isSynced: false,
             targetOppLeverId: null,
@@ -132,5 +197,56 @@ export class LeverSyncJobSpec extends BaseTest {
             failureLog: null
         })
     }
+
+
+    @test("generate oppFiles csv")
+    async generateCsv() {
+        let oppsData = await LeverDataRepository.find({
+            where: {
+                targetOppLeverId: Not(IsNull()),
+                isSynced: true,
+                hasError: false
+            },
+        })
+
+        const files = oppsData.filter(x => x?.excludedFileUrls?.length > 0)
+        let data = []
+
+        files.flatMap(x => x.excludedFileUrls.map(y => {
+
+            const split = y.split("otherFiles/")[1]
+            const name = split.split("/")[1];
+            const id = split.split("/")[0]
+
+            const files = x.otherFiles
+
+            for (const file of files) {
+                data.push({
+                    FileName: name,
+                    OppId: id,
+                    fileSize: file?.size,
+                    fileId: file?.id
+                })
+            }
+        }));
+
+        await Promise.all([files]);
+
+        let fileName = `./temp/oppFiles_${new Date().valueOf()}.csv`;
+        const writer = csvWriter.createObjectCsvWriter({
+            path: fileName,
+            header: [
+                {id: "FileName", title: "File Name"},
+                {id: "OppId", title: "Opp Id"},
+                {id: "fileSize", title: "File Size"},
+                {id: "fileId", title: "File Id"},
+
+            ]
+        });
+
+        await writer.writeRecords(data);
+    }
+
+
 }
 

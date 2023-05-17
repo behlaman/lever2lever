@@ -113,11 +113,6 @@ export class LeverApiService {
         return this.parseResponse(res);
     }
 
-    async getSources(): Promise<{ status: number, data: any }> {
-        let res = await this.axios.get(`/sources`).catch(e => e.response);
-        return this.parseResponse(res);
-    }
-
     async addOpportunityWithMultipart(
         performAs: string,
         data: any,
@@ -130,13 +125,13 @@ export class LeverApiService {
             try {
                 if (x === "phones") {
                     data[x].forEach((x) => {
-                        formData.append(`phones[][value]`, x.value);
+                        formData?.append(`phones[][value]`, x.value);
                     });
                 } else if (x === "archived") {
                     if (data[x]?.reason) {
                         const archived = data[x] as Archived;
-                        formData.append("archived[reason]", archived.reason);
-                        formData.append("archived[archivedAt]", archived.archivedAt)
+                        formData?.append("archived[reason]", archived.reason);
+                        formData?.append("archived[archivedAt]", archived.archivedAt)
                     }
                 } else if (data[x] instanceof Array) {
                     if (data[x].length) {
@@ -145,7 +140,7 @@ export class LeverApiService {
                         });
                     }
                 } else {
-                    formData.append(`${x}`, data[x]);
+                    formData?.append(`${x}`, data[x]);
                 }
             } catch (e) {
                 console.log(e, `Error creating form data ${x} for candidate ${JSON.stringify(data)}`);
@@ -180,9 +175,9 @@ export class LeverApiService {
         return this.parseResponse(res)
     }
 
-    async addNote(leverId: string, note: string, isSecret: boolean) {
+    async addNote(perform_as: string, leverId: string, note: string, isSecret: boolean) {
         let data = {value: note, secret: isSecret};
-        return this.getResponse(`/opportunities/${leverId}/notes`, data).catch((e) => e.response)
+        return this.getResponse(`/opportunities/${leverId}/notes?perform_as=${perform_as}`, data).catch((e) => e.response)
     }
 
     async handle429Response(url: string, recursionFactor: number = 0): Promise<ApiResponse> {
@@ -272,7 +267,7 @@ export class LeverApiService {
                 maxBodyLength: Infinity,
             })
             .catch((e) => {
-                // console.log(e.response?.data?.message);
+                console.log(e?.message);
                 return e?.response
             });
 
