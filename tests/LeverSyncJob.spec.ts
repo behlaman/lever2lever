@@ -247,6 +247,32 @@ export class LeverSyncJobSpec extends BaseTest {
         await writer.writeRecords(data);
     }
 
+    @test("Get opp emails")
+    async getEmails(): Promise<any> {
+        let dataRec = await LeverDataRepository.find({});
 
+        let oppEmails = []
+
+        dataRec.flatMap(x => {
+            let opp = x.recordData
+            oppEmails.push({
+                emails: opp?.emails,
+                oppId: opp?.id
+            });
+        })
+
+        console.log(oppEmails);
+
+        let fileName = `./temp/oppEmails_${new Date().valueOf()}.csv`;
+        const writer = csvWriter.createObjectCsvWriter({
+            path: fileName,
+            header: [
+                {id: "emails", title: "Opp Emails"},
+                {id: "oppId", title: "Opp Id"},
+            ]
+        });
+
+        await writer.writeRecords(oppEmails);
+    }
 }
 

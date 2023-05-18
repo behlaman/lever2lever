@@ -33,6 +33,7 @@ export class LeverMigrateJob {
                     }
                 });
 
+
                 const leverOppPromise = leverData.flatMap(async oppData => {
                     const opportunity: any = oppData?.recordData;
 
@@ -130,7 +131,8 @@ export class LeverMigrateJob {
 
                     for (const oppNote of oppNotes) {
                         createOppNotes = oppNote?.fields?.map(x => {
-                            let body = `Author Email  ->  ${owner ? owner : "yuya.harada@woven-planet.global"}\n`;
+                            let body = `Author Name ->  ${userId ? oppOwner?.name : "Yuya Harada"}\n`
+                            body += `Author Email  ->  ${owner ? owner : "yuya.harada@woven-planet.global"}\n`;
                             body += `Value ->  ${x?.value}`;
 
                             return body
@@ -142,8 +144,8 @@ export class LeverMigrateJob {
                     let noteData: string = "";
 
                     if (oppNotes?.length === 0) {
-                        noteData = `Author Name ->  ${oppOwner?.name ?? "Yuya Harada"}\n`;
-                        noteData += `Author Email -> ${owner ? owner : "yuya.harada@woven-planet.global"}`;
+                        noteData = `Author Name ->   ${userId ? oppOwner?.name : "Yuya Harada"}\n`;
+                        noteData += `Author Email -> ${userId ? owner : "yuya.harada@woven-planet.global"}`;
 
                         createOppNotes?.push(noteData)
                     }
@@ -151,7 +153,7 @@ export class LeverMigrateJob {
                     let noteIDs: any = []
                     if (response?.data?.id) {
                         for (const note of createOppNotes) {
-                            let response = await leverApiService.addNote(performAs, oppData?.targetOppLeverId, note, true)
+                            let response = await leverApiService.addNote(oppData?.targetOppLeverId, note, true)
                             if (response?.status === 201 && response.data !== null) {
                                 noteIDs.push(response?.data?.noteId)
                                 console.log(`created notes successfully for opp id: ${oppData?.targetOppLeverId}`)
@@ -273,7 +275,6 @@ export class LeverMigrateJob {
                     let response = await leverApiService.uploadOppFiles(oppId, file, performAs);
                     if (response?.status === 200 && response?.data) {
                         downloadedFiles.push(response?.data?.id);
-                        // console.log(`Successfully uploaded file for oppId: ${oppId}`)
                     } else {
                         console.log(`Error while uploading files ${JSON.stringify(response?.data)}`)
                     }

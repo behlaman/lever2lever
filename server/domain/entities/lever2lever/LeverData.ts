@@ -22,7 +22,7 @@ export class LeverData extends BaseEntity {
     oppOwner: any;
 
     @Column("json", {nullable: true})
-    recordData: LeverCandidate[];
+    recordData: LeverCandidate;
 
     @Column("json", {nullable: true})
     offers: Offer[];

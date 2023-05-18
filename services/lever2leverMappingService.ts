@@ -11,7 +11,49 @@ export class Lever2leverMappingService {
 
         targetOpp.name = opportunity.name;
 
-        targetOpp.emails = opportunity.emails;
+
+        const domains = ["allegisgroup.com",
+            "embarc.co.jp",
+            "4th-valley.com",
+            "hccr.com",
+            "heidrick.com",
+            "hrnetone.com",
+            "jac-recruitment.jp",
+            "optms.jp",
+            "randstad.co.jp",
+            "recruiterroom.com",
+            "rgf-executive.com",
+            "roberthalf.jp",
+            "robertwalters.co.jp",
+            "source-edge.com",
+            "cornerstone.jp",
+            "e-board.jp",
+            "itsfearless.com",
+            "hays.co.jp",
+            "jsource.co.jp",
+            "jobslab.io",
+            "m-next.jp",
+            "metiercareers.co.jp",
+            "moback.com",
+            "wilsonhcg.com",
+            "rgf-professional.com",
+            "r-agent.com",
+            "skillhouse.co.jp",
+            "turnpoint-consulting.com",
+            "ryo.takahashi@tri-ad.global"]
+
+        let emails = []
+        domains.forEach(domain => {
+            emails.push(...opportunity.emails.filter(x => (x.includes(domain))))
+        })
+
+        let filteredEmails = []
+
+        filteredEmails = emails ? opportunity.emails.filter(x => (!emails.includes(x))) : []
+
+        console.log(filteredEmails);
+
+        targetOpp.emails = filteredEmails;
 
         targetOpp.location = opportunity.location;
 

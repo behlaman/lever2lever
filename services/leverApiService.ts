@@ -175,9 +175,9 @@ export class LeverApiService {
         return this.parseResponse(res)
     }
 
-    async addNote(perform_as: string, leverId: string, note: string, isSecret: boolean) {
+    async addNote(leverId: string, note: string, isSecret: boolean) {
         let data = {value: note, secret: isSecret};
-        return this.getResponse(`/opportunities/${leverId}/notes?perform_as=${perform_as}`, data).catch((e) => e.response)
+        return this.getResponse(`/opportunities/${leverId}/notes`, data).catch((e) => e.response)
     }
 
     async handle429Response(url: string, recursionFactor: number = 0): Promise<ApiResponse> {
